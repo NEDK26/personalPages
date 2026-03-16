@@ -8,7 +8,7 @@ healthRouter.get("/", (c) => {
   return c.json({
     ok: true,
     service: "backend",
-    message: "API routes are available under /api",
+    message: "API routes are available at the root path",
   });
 });
 

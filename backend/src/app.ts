@@ -12,17 +12,16 @@ app.get("/", (c) => {
   return c.json({
     message: "Backend API is running",
     docs: [
-      "/api",
-      "/api/health",
-      "/api/profile",
-      "/api/now",
-      "/api/links",
-      "/api/highlights",
+      "/health",
+      "/profile",
+      "/now",
+      "/links",
+      "/highlights",
     ],
   });
 });
 
-app.route("/api", healthRouter);
-app.route("/api", publicRouter);
+app.route("/", healthRouter);
+app.route("/", publicRouter);
 
 export default app;
