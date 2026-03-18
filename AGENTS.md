@@ -1,0 +1,207 @@
+# AGENTS.md
+
+This file is for coding agents working in `/Users/minda66/Desktop/projects/demo-personal-project-fullstack`.
+
+## Repository Scope
+
+- The active application currently lives in `backend/`.
+- `frontend/` exists but is empty at the time of writing.
+- There is no existing monorepo task runner; use package-level commands directly.
+- Do not assume missing tooling exists. Check `backend/package.json` before introducing new commands.
+
+## Project Layout
+
+- `backend/src/app.ts` builds the Hono app and mounts routes.
+- `backend/src/server.ts` starts the Node server.
+- `backend/src/routes/` contains HTTP route modules.
+- `backend/src/config/` contains environment parsing and config helpers.
+- `backend/src/db/` contains database client setup.
+- `backend/src/data/` contains static response content.
+- `backend/dist/` is compiled output; do not edit it manually.
+- `backend/.env.example` documents expected environment variables.
+
+## Working Directory
+
+- For nearly all development commands, run from `backend/`.
+- Repository root is useful for cross-project documentation only.
+- When referencing files in agent output, use workspace-relative paths such as `backend/src/app.ts`.
+
+## Setup
+
+- Install dependencies with `npm install` from `backend/`.
+- Copy `backend/.env.example` to `backend/.env` when local environment variables are needed.
+- Do not commit `backend/.env`.
+- Required runtime values are validated in `backend/src/config/env.ts`.
+
+## Environment Variables
+
+- `PORT`: server port; defaults to `3000` via Zod coercion.
+- `TURSO_DATABASE_URL`: optional unless database-backed features are required.
+- `TURSO_AUTH_TOKEN`: optional unless database-backed features are required.
+- `NODE_ENV`: parsed as `development | test | production`; defaults to `development`.
+
+## Build, Run, and Validation Commands
+
+Run all commands below from `backend/` unless noted otherwise.
+
+- Install dependencies: `npm install`
+- Start dev server with watch mode: `npm run dev`
+- Build TypeScript to `dist/`: `npm run build`
+- Start the compiled server: `npm run start`
+- Type-check without emitting files: `npx tsc --noEmit`
+
+## Lint Commands
+
+- There is currently no lint script in `backend/package.json`.
+- There is no ESLint, Biome, or Prettier config checked into this repository.
+- Do not claim lint passed unless you first add and run lint tooling.
+- If you add linting in the future, also document the exact command here.
+
+## Test Commands
+
+- There is currently no test runner configured in `backend/package.json`.
+- There are currently no committed test files in the repository.
+- Do not claim tests passed unless you first add a test framework and execute it.
+- If you need a basic validation step today, use `npx tsc --noEmit` and manual endpoint checks.
+
+## Running a Single Test
+
+- Single-test execution is not available in the current repository because no test framework is configured.
+- If you introduce a test runner, update this file with:
+  - the full test command
+  - the single-file test command
+  - the single-test-name pattern command
+- Until then, do not invent commands such as `npm test`, `vitest`, or `jest`.
+
+## Manual Verification
+
+- Start the API locally with `npm run dev`.
+- Check the root endpoint: `GET /`
+- Check health endpoint: `GET /health`
+- Check public endpoints: `GET /profile`, `GET /now`, `GET /links`, `GET /highlights`
+- When database credentials are absent, health should still respond and report database configuration accurately.
+
+## Existing Technical Conventions
+
+- Language: TypeScript with `strict: true`.
+- Module system: CommonJS output via TypeScript compiler.
+- HTTP framework: Hono.
+- Environment validation: Zod.
+- Database client: `@libsql/client` for Turso/libSQL.
+
+## Imports
+
+- Put third-party imports first.
+- Separate local imports from third-party imports with one blank line.
+- Use relative imports within `backend/src/`.
+- Keep imports minimal; remove unused imports immediately.
+- Follow the existing style of double-quoted module specifiers.
+
+## Formatting
+
+- Match the existing code style already present in `backend/src/`.
+- Use double quotes, not single quotes.
+- Use semicolons.
+- Preserve trailing commas where the formatter or existing style uses them.
+- Keep one blank line between logical import groups and between major blocks.
+- Prefer readable multi-line object literals over dense one-line structures.
+
+## Types
+
+- Prefer TypeScript inference for obvious local values.
+- Add explicit types at module boundaries when they improve clarity.
+- Keep `strict` compatibility; do not weaken compiler settings to make code compile.
+- Avoid `any` unless absolutely necessary and justified.
+- Prefer narrowing over assertions.
+- If using an assertion, keep it local and explain it with code structure rather than comments.
+
+## Naming Conventions
+
+- Use `camelCase` for variables, functions, and object properties.
+- Use `PascalCase` for types, interfaces, classes, and Zod schemas when exported as type-like constructs.
+- Use `UPPER_SNAKE_CASE` only for true constants with process/env-style semantics.
+- Use `kebab-case` for file names, matching files like `public-content.ts`.
+- Name Hono router instances with a `Router` suffix, e.g. `healthRouter`, `publicRouter`.
+- Use descriptive names such as `checkDatabaseConnection` instead of abbreviated verbs.
+
+## File Organization
+
+- Keep route definitions inside `backend/src/routes/`.
+- Keep config parsing and derived config helpers inside `backend/src/config/`.
+- Keep database setup inside `backend/src/db/`.
+- Keep static content or fixtures in `backend/src/data/`.
+- Prefer creating a new module only when logic is reused or meaningfully isolated.
+
+## Route and Handler Style
+
+- Keep handlers small and focused.
+- Return JSON directly from handlers.
+- Keep root route registration centralized in `backend/src/app.ts`.
+- Mount routers with `app.route()` rather than inlining all endpoints in one file.
+- Use response shapes that are easy for clients to consume consistently.
+
+## Error Handling
+
+- Fail fast for invalid startup configuration.
+- Parse environment variables with Zod before using them.
+- In `catch` blocks, treat errors as `unknown` and narrow with `instanceof Error` before reading `.message`.
+- Return explicit HTTP status codes for operational failures.
+- Prefer stable error payloads over leaking raw implementation details.
+- Log startup/configuration failures clearly.
+
+## Database and Configuration Guidance
+
+- Treat the Turso connection as optional unless the feature truly requires it.
+- Preserve the current pattern where database availability is derived from validated env state.
+- Do not hardcode secrets, tokens, or URLs.
+- Keep secret values in environment variables only.
+- If database access is optional, make the API behavior explicit when config is missing.
+
+## Exports
+
+- Prefer named exports for reusable values and helpers.
+- The existing app entry uses a default export from `backend/src/app.ts`; keep that unless there is a strong reason to refactor.
+- Keep export style consistent within a module.
+
+## Comments
+
+- Add comments only when a block is non-obvious.
+- Do not add comments that restate the code literally.
+- Prefer expressive names and small functions over explanatory comments.
+
+## Generated and Ignored Files
+
+- Do not hand-edit `backend/dist/`.
+- Source of truth is `backend/src/`.
+- `backend/node_modules/` is installed state, not project source.
+- Respect `.gitignore`: `node_modules`, `dist`, and `.env` should remain uncommitted unless the repo owner changes policy.
+
+## Agent Guardrails
+
+- Before making changes, inspect existing patterns in nearby files and follow them.
+- Keep edits minimal and targeted.
+- Do not add large frameworks or repo-wide tooling unless the task calls for it.
+- Do not fabricate CI, lint, or test commands that are not present.
+- If you add new tooling, update `backend/package.json` and this file together.
+- Prefer changes in source files over generated artifacts.
+
+## Cursor and Copilot Rules
+
+- No `.cursorrules` file is present.
+- No `.cursor/rules/` directory is present.
+- No `.github/copilot-instructions.md` file is present.
+- There are currently no repository-specific Cursor or Copilot instruction files to incorporate.
+
+## If You Add Tests Later
+
+- Add a script to `backend/package.json`.
+- Add the exact suite command to this file.
+- Add a documented single-test command to this file.
+- Prefer deterministic tests that do not require live external services unless clearly marked as integration tests.
+
+## If You Add Linting Later
+
+- Add a script to `backend/package.json`.
+- Commit the corresponding config file.
+- Document autofix and check-only commands here.
+- Keep style rules aligned with the current TypeScript and Hono code patterns.
