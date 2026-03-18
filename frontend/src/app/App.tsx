@@ -1,6 +1,6 @@
 import { Mail, Moon } from "lucide-react";
 
-import avatarImage from "../assets/avatar.png";
+import avatarImage from "../assets/avatar.jpg";
 
 export default function App() {
   return (
