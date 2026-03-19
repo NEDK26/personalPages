@@ -138,6 +138,10 @@
     scroll-behavior: smooth;
   }
 
+  body {
+    min-height: 100vh;
+  }
+
   h1 {
     font-size: var(--text-2xl);
     font-weight: var(--font-weight-medium);
@@ -178,5 +182,21 @@
     font-size: var(--text-base);
     font-weight: var(--font-weight-normal);
     line-height: 1.5;
+  }
+}
+
+@layer utilities {
+  .mobile-page-padding {
+    padding-bottom: calc(env(safe-area-inset-bottom) + 5rem);
+  }
+
+  .mobile-dock-offset {
+    bottom: calc(env(safe-area-inset-bottom) + 0.6rem);
+  }
+
+  @media (min-width: 768px) {
+    .mobile-page-padding {
+      padding-bottom: 2rem;
+    }
   }
 }
