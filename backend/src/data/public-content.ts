@@ -1,5 +1,5 @@
 export const profile = {
-  name: "Ned",
+  name: "Minda Xu",
   headline: "Backend developer building global-first personal products",
   avatarUrl: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=600&q=80",
   location: "China",
@@ -10,9 +10,9 @@ export const profile = {
     "I build TypeScript backend systems, shape product ideas into APIs, and turn personal experiments into public-facing tools.",
   tags: ["TypeScript", "Node.js", "Hono", "Turso", "REST API"],
   socials: {
-    github: "https://github.com/your-handle",
+    github: "https://github.com/NEDK26",
     blog: "https://your-domain.com",
-    email: "mailto:hello@your-domain.com",
+    email: "1049696396@qq.com",
   },
 };
 
@@ -27,7 +27,7 @@ export const now = {
 export const links = [
   {
     label: "GitHub",
-    url: "https://github.com/your-handle",
+    url: "https://github.com/NEDK26",
     type: "code",
   },
   {
@@ -37,7 +37,7 @@ export const links = [
   },
   {
     label: "Email",
-    url: "mailto:hello@your-domain.com",
+    url: "mailto:1049696396@qq.com",
     type: "contact",
   },
 ];
