@@ -1,7 +1,5 @@
 import {
   AlertCircle,
-  ChevronLeft,
-  ChevronRight,
   ExternalLink,
   Github,
   Globe,
@@ -9,11 +7,10 @@ import {
   MapPin,
   Moon,
   RefreshCw,
-  Sparkles,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-import type { ReactNode, TouchEvent } from "react";
+import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
 
 import avatarImage from "../assets/avatar.jpg";
 import { fetchPublicContent } from "../lib/api";
@@ -25,7 +22,6 @@ type PublicContentState =
   | { status: "ready"; data: PublicContent };
 
 type SocialLinkKey = keyof Profile["socials"];
-type MobileSlideId = "now" | "highlights" | "links";
 
 interface NavigationItem {
   label: string;
@@ -66,12 +62,6 @@ interface LinksSectionProps {
   sectionId?: string;
 }
 
-interface MobileSlide {
-  id: MobileSlideId;
-  label: string;
-  content: ReactNode;
-}
-
 const navigationItems = [
   { label: "About", href: "#about" },
   { label: "Now", href: "#now" },
@@ -108,11 +98,16 @@ function opensNewTab(url: string) {
 
 function SectionShell({ title, eyebrow, sectionId, children }: SectionShellProps) {
   return (
-    <section id={sectionId} className="rounded-[1.75rem] border border-white/60 bg-white/60 p-6 shadow-sm backdrop-blur-sm">
-      <div className="mb-4 flex items-center justify-between gap-4">
+    <section
+      id={sectionId}
+      className="scroll-mt-24 rounded-[1.5rem] border border-white/60 bg-white/70 p-4 shadow-sm backdrop-blur-sm sm:rounded-[1.75rem] sm:p-6"
+    >
+      <div className="mb-4 flex items-center justify-between gap-4 sm:mb-5">
         <div>
-          <p className="mb-2 text-xs uppercase tracking-[0.28em] text-slate-500">{eyebrow}</p>
-          <h3 className="text-xl text-slate-900">{title}</h3>
+          <p className="mb-2 text-[11px] uppercase tracking-[0.24em] text-slate-500 sm:text-xs sm:tracking-[0.28em]">
+            {eyebrow}
+          </p>
+          <h3 className="text-lg text-slate-900 sm:text-xl">{title}</h3>
         </div>
       </div>
       {children}
@@ -124,9 +119,9 @@ function ProfileCard({ profile, sectionId }: ProfileCardProps) {
   return (
     <section
       id={sectionId}
-      className="flex flex-col items-center rounded-[2rem] border border-white/60 bg-white/60 p-8 text-center shadow-sm backdrop-blur-sm"
+      className="scroll-mt-24 flex flex-col items-center rounded-[1.75rem] border border-white/60 bg-white/70 p-5 text-center shadow-sm backdrop-blur-sm sm:rounded-[2rem] sm:p-8"
     >
-      <div className="mb-6 h-48 w-48 overflow-hidden rounded-full border-4 border-white bg-purple-100 shadow-lg">
+      <div className="mb-5 h-32 w-32 overflow-hidden rounded-full border-4 border-white bg-purple-100 shadow-lg sm:mb-6 sm:h-44 sm:w-44 lg:h-48 lg:w-48">
         <img
           src={avatarImage}
           alt={`${profile.name} avatar`}
@@ -134,11 +129,11 @@ function ProfileCard({ profile, sectionId }: ProfileCardProps) {
         />
       </div>
 
-      <h2 className="mb-3 text-3xl text-slate-900">{profile.name}</h2>
-      <p className="mb-4 text-lg text-slate-700">{profile.headline}</p>
-      <p className="mb-5 leading-relaxed text-slate-600">{profile.shortBio}</p>
+      <h2 className="mb-3 text-2xl text-slate-900 sm:text-3xl">{profile.name}</h2>
+      <p className="mb-4 text-base leading-7 text-slate-700 sm:text-lg">{profile.headline}</p>
+      <p className="mb-5 text-sm leading-6 text-slate-600 sm:text-base sm:leading-relaxed">{profile.shortBio}</p>
 
-      <div className="mb-6 flex flex-wrap items-center justify-center gap-3 text-sm text-slate-600">
+      <div className="mb-5 flex flex-wrap items-center justify-center gap-2 text-sm text-slate-600 sm:mb-6 sm:gap-3">
         <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-3 py-1">
           <MapPin className="h-4 w-4" />
           {profile.location}
@@ -155,7 +150,7 @@ function ProfileCard({ profile, sectionId }: ProfileCardProps) {
         ))}
       </div>
 
-      <div className="flex gap-4">
+      <div className="flex w-full flex-wrap justify-center gap-3 sm:gap-4">
         {socialLinkConfig.map(({ key, label, icon: Icon }) => {
           const href = profile.socials[key];
 
@@ -180,14 +175,14 @@ function ProfileCard({ profile, sectionId }: ProfileCardProps) {
 function NowSection({ profile, now, sectionId }: NowSectionProps) {
   return (
     <SectionShell title="Now" eyebrow="Live Status" sectionId={sectionId}>
-      <div className="mb-4 flex items-center justify-between gap-4">
-        <p className="text-lg text-slate-800">{now.focus}</p>
+      <div className="mb-4 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+        <p className="text-base leading-7 text-slate-800 sm:text-lg">{now.focus}</p>
         <span className="hidden rounded-full bg-purple-200/60 px-3 py-1 text-sm text-slate-700 sm:inline-flex">
           {profile.languages.join(" / ")}
         </span>
       </div>
 
-      <p className="mb-5 leading-relaxed text-slate-600">{now.availability}</p>
+      <p className="mb-5 text-sm leading-6 text-slate-600 sm:text-base sm:leading-relaxed">{now.availability}</p>
 
       <div className="mb-5 flex flex-wrap gap-2 sm:hidden">
         {profile.languages.map((language) => (
@@ -228,7 +223,7 @@ function HighlightsSection({ highlights, sectionId }: HighlightsSectionProps) {
     <SectionShell title="Highlights" eyebrow="Selected Work" sectionId={sectionId}>
       <div className="grid gap-4 md:grid-cols-3">
         {highlights.map((highlight) => (
-          <article key={highlight.title} className="rounded-[1.5rem] bg-white/85 p-4 shadow-sm">
+          <article key={highlight.title} className="rounded-[1.25rem] bg-white/85 p-4 shadow-sm sm:rounded-[1.5rem]">
             <span className="mb-3 inline-flex rounded-full bg-purple-200/60 px-3 py-1 text-xs uppercase tracking-[0.24em] text-slate-700">
               {highlight.kind}
             </span>
@@ -249,7 +244,7 @@ function LinksSection({ links, sectionId }: LinksSectionProps) {
           <a
             key={`${link.type}-${link.label}`}
             href={link.url}
-            className="flex items-center justify-between rounded-[1.5rem] bg-white/85 px-4 py-4 text-slate-800 transition-colors hover:bg-white hover:text-purple-700"
+            className="flex flex-col items-start gap-3 rounded-[1.25rem] bg-white/85 px-4 py-4 text-slate-800 transition-colors hover:bg-white hover:text-purple-700 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:rounded-[1.5rem]"
             target={opensNewTab(link.url) ? "_blank" : undefined}
             rel={opensNewTab(link.url) ? "noreferrer" : undefined}
           >
@@ -257,7 +252,7 @@ function LinksSection({ links, sectionId }: LinksSectionProps) {
               <div className="text-sm uppercase tracking-[0.24em] text-slate-500">{link.type}</div>
               <div className="mt-1 text-lg text-slate-900">{link.label}</div>
             </div>
-            <ExternalLink className="h-5 w-5" />
+            <ExternalLink className="h-5 w-5 shrink-0" />
           </a>
         ))}
       </div>
@@ -265,185 +260,36 @@ function LinksSection({ links, sectionId }: LinksSectionProps) {
   );
 }
 
-function MobileCarousel({ profile, now, links, highlights }: PublicContent) {
-  const [activeSlideIndex, setActiveSlideIndex] = useState(0);
-  const touchStartXRef = useRef<number | null>(null);
-  const touchCurrentXRef = useRef<number | null>(null);
-
-  const slides: readonly MobileSlide[] = [
-    {
-      id: "now",
-      label: "Now",
-      content: <NowSection profile={profile} now={now} />,
-    },
-    {
-      id: "highlights",
-      label: "Highlights",
-      content: <HighlightsSection highlights={highlights} />,
-    },
-    {
-      id: "links",
-      label: "Links",
-      content: <LinksSection links={links} />,
-    },
-  ];
-
-  function goToSlide(index: number) {
-    const nextIndex = Math.min(slides.length - 1, Math.max(0, index));
-
-    setActiveSlideIndex(nextIndex);
-  }
-
-  function handleTouchStart(event: TouchEvent<HTMLDivElement>) {
-    const touch = event.touches[0];
-
-    touchStartXRef.current = touch.clientX;
-    touchCurrentXRef.current = touch.clientX;
-  }
-
-  function handleTouchMove(event: TouchEvent<HTMLDivElement>) {
-    const touch = event.touches[0];
-
-    touchCurrentXRef.current = touch.clientX;
-  }
-
-  function handleTouchEnd() {
-    const startX = touchStartXRef.current;
-    const endX = touchCurrentXRef.current;
-
-    touchStartXRef.current = null;
-    touchCurrentXRef.current = null;
-
-    if (startX === null || endX === null) {
-      return;
-    }
-
-    const deltaX = endX - startX;
-    const swipeThreshold = 48;
-
-    if (Math.abs(deltaX) < swipeThreshold) {
-      return;
-    }
-
-    if (deltaX < 0) {
-      goToSlide(activeSlideIndex + 1);
-      return;
-    }
-
-    goToSlide(activeSlideIndex - 1);
-  }
-
-  return (
-    <section className="rounded-[2rem] border border-white/60 bg-gradient-to-br from-white/65 via-white/50 to-purple-100/55 p-4 shadow-sm backdrop-blur-sm lg:hidden">
-      <div className="mb-4 flex items-start justify-between gap-4">
-        <div>
-          <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-1 text-xs uppercase tracking-[0.24em] text-slate-600">
-            <Sparkles className="h-3.5 w-3.5" />
-            Mobile Swipe
-          </div>
-          <h3 className="text-xl text-slate-900">滑动浏览资料卡片</h3>
-          <p className="mt-2 text-sm leading-relaxed text-slate-600">
-            左右滑动查看 {profile.name} 的近况、亮点和链接。
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            aria-label="上一张"
-            onClick={() => goToSlide(activeSlideIndex - 1)}
-            className="rounded-full bg-white/85 p-2 text-slate-700 transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-45"
-            disabled={activeSlideIndex === 0}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            aria-label="下一张"
-            onClick={() => goToSlide(activeSlideIndex + 1)}
-            className="rounded-full bg-white/85 p-2 text-slate-700 transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-45"
-            disabled={activeSlideIndex === slides.length - 1}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
-
-      <div className="mb-4 flex flex-wrap gap-2">
-        {slides.map((slide, index) => {
-          const isActive = index === activeSlideIndex;
-
-          return (
-            <button
-              key={slide.id}
-              type="button"
-              onClick={() => goToSlide(index)}
-              className={`rounded-full px-3 py-2 text-sm transition-all ${
-                isActive
-                  ? "bg-slate-900 text-white shadow-sm"
-                  : "bg-white/70 text-slate-600 hover:bg-white hover:text-slate-900"
-              }`}
-            >
-              {slide.label}
-            </button>
-          );
-        })}
-      </div>
-
-      <div
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        onTouchCancel={handleTouchEnd}
-        className="overflow-hidden"
-      >
-        <div
-          className="flex transition-transform duration-300 ease-out"
-          style={{ transform: `translateX(-${activeSlideIndex * 100}%)` }}
-        >
-          {slides.map((slide) => (
-            <div key={slide.id} className="w-full shrink-0">
-              {slide.content}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="mt-4 flex items-center justify-between text-sm text-slate-500">
-        <span>
-          {String(activeSlideIndex + 1).padStart(2, "0")} / {String(slides.length).padStart(2, "0")}
-        </span>
-        <div className="flex items-center gap-2">
-          {slides.map((slide, index) => (
-            <span
-              key={slide.id}
-              className={`h-2 rounded-full transition-all ${
-                index === activeSlideIndex ? "w-6 bg-slate-900" : "w-2 bg-slate-300"
-              }`}
-            />
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
 function ReadyState({ data }: { data: PublicContent }) {
   const { profile, now, links, highlights } = data;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-purple-200 to-purple-100 px-4 py-6 text-slate-800 md:py-8">
+    <div className="min-h-screen bg-gradient-to-b from-purple-200 to-purple-100 px-3 py-4 text-slate-800 sm:px-4 sm:py-6 md:py-8">
       <div className="mx-auto flex max-w-5xl items-start justify-center lg:min-h-screen lg:items-center">
-        <div className="w-full rounded-[2rem] border border-white/60 bg-white/55 p-5 shadow-[0_24px_80px_rgba(88,28,135,0.12)] backdrop-blur-xl md:p-10">
-          <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="w-full rounded-[1.75rem] border border-white/60 bg-white/55 p-4 shadow-[0_24px_80px_rgba(88,28,135,0.12)] backdrop-blur-xl sm:rounded-[2rem] sm:p-6 md:p-10">
+          <div className="mb-6 flex flex-col gap-3 sm:mb-8 sm:gap-4 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl text-slate-900">{profile.name}</h1>
+              <h1 className="text-xl text-slate-900 sm:text-2xl">{profile.name}</h1>
               <Moon className="h-5 w-5 text-purple-700" />
             </div>
-            <div className="text-sm text-slate-600">
+            <div className="text-xs text-slate-600 sm:text-sm">
               最近更新于 <time dateTime={now.updatedAt}>{formatUpdatedAt(now.updatedAt)}</time>
             </div>
           </div>
+
+          <nav className="mb-6 -mx-1 overflow-x-auto pb-1 lg:hidden">
+            <div className="flex min-w-max gap-2 px-1">
+              {navigationItems.map((item) => (
+                <a
+                  key={item.href}
+                  href={item.href}
+                  className="whitespace-nowrap rounded-full bg-white/80 px-4 py-2 text-sm text-slate-700 transition-colors hover:bg-white hover:text-slate-900"
+                >
+                  {item.label}
+                </a>
+              ))}
+            </div>
+          </nav>
 
           <nav className="mb-10 hidden flex-wrap gap-6 text-sm text-slate-700 lg:flex">
             {navigationItems.map((item) => (
@@ -453,9 +299,11 @@ function ReadyState({ data }: { data: PublicContent }) {
             ))}
           </nav>
 
-          <div className="grid gap-6 lg:hidden">
-            <ProfileCard profile={profile} />
-            <MobileCarousel profile={profile} now={now} links={links} highlights={highlights} />
+          <div className="grid gap-4 sm:gap-5 lg:hidden">
+            <ProfileCard profile={profile} sectionId="about" />
+            <NowSection profile={profile} now={now} sectionId="now" />
+            <HighlightsSection highlights={highlights} sectionId="highlights" />
+            <LinksSection links={links} sectionId="links" />
           </div>
 
           <div className="hidden gap-8 lg:grid lg:grid-cols-[320px_minmax(0,1fr)]">
@@ -502,10 +350,12 @@ export default function App() {
   if (state.status === "loading") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-purple-200 to-purple-100 p-4 text-slate-700">
-        <div className="w-full max-w-md rounded-[2rem] border border-white/60 bg-white/55 p-8 text-center shadow-[0_24px_80px_rgba(88,28,135,0.12)] backdrop-blur-xl">
+        <div className="w-full max-w-md rounded-[1.75rem] border border-white/60 bg-white/55 p-6 text-center shadow-[0_24px_80px_rgba(88,28,135,0.12)] backdrop-blur-xl sm:rounded-[2rem] sm:p-8">
           <RefreshCw className="mx-auto mb-4 h-10 w-10 animate-spin text-purple-700" />
-          <h1 className="mb-2 text-2xl text-slate-900">正在连接后端</h1>
-          <p className="leading-relaxed text-slate-600">正在读取个人资料、链接和项目亮点数据。</p>
+          <h1 className="mb-2 text-xl text-slate-900 sm:text-2xl">正在连接后端</h1>
+          <p className="text-sm leading-6 text-slate-600 sm:text-base sm:leading-relaxed">
+            正在读取个人资料、链接和项目亮点数据。
+          </p>
         </div>
       </div>
     );
@@ -514,10 +364,10 @@ export default function App() {
   if (state.status === "error") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-purple-200 to-purple-100 p-4 text-slate-700">
-        <div className="w-full max-w-md rounded-[2rem] border border-white/60 bg-white/55 p-8 text-center shadow-[0_24px_80px_rgba(88,28,135,0.12)] backdrop-blur-xl">
+        <div className="w-full max-w-md rounded-[1.75rem] border border-white/60 bg-white/55 p-6 text-center shadow-[0_24px_80px_rgba(88,28,135,0.12)] backdrop-blur-xl sm:rounded-[2rem] sm:p-8">
           <AlertCircle className="mx-auto mb-4 h-10 w-10 text-rose-500" />
-          <h1 className="mb-2 text-2xl text-slate-900">后端连接失败</h1>
-          <p className="mb-6 leading-relaxed text-slate-600">{state.message}</p>
+          <h1 className="mb-2 text-xl text-slate-900 sm:text-2xl">后端连接失败</h1>
+          <p className="mb-6 text-sm leading-6 text-slate-600 sm:text-base sm:leading-relaxed">{state.message}</p>
           <button
             type="button"
             onClick={() => window.location.reload()}
