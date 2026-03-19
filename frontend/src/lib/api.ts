@@ -13,8 +13,24 @@ import type {
 } from "../types/public";
 
 const apiConfig = {
-  baseUrl: normalizeBaseUrl(import.meta.env.VITE_API_BASE_URL || "/api"),
+  baseUrl: resolveBaseUrl(),
 } as const satisfies { baseUrl: string };
+
+function resolveBaseUrl() {
+  const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL;
+
+  if (!configuredBaseUrl) {
+    return "/api";
+  }
+
+  const normalizedBaseUrl = normalizeBaseUrl(configuredBaseUrl);
+
+  if (import.meta.env.PROD && /^https?:\/\//.test(normalizedBaseUrl)) {
+    return "/api";
+  }
+
+  return normalizedBaseUrl;
+}
 
 function normalizeBaseUrl(baseUrl: string) {
   const trimmedBaseUrl = baseUrl.trim();

@@ -20,7 +20,8 @@
 当前默认值：
 
 - 本地开发通过 `/api` 代理到 `http://localhost:3000`
-- 生产环境直接请求 `https://demo-personal-project-fullstack.vercel.app`
+- 生产环境默认也请求同域 `/api`
+- Vercel 上由 `frontend/api/[...route].ts` 代理到真实后端，避免浏览器直接访问后端域名
 
 ## 常改位置
 
@@ -34,9 +35,9 @@
 
 1. 更新 `backend/src/data/public-content.ts`，把默认示例数据替换成你的真实资料。
 2. 如果想让头像也走后端配置，再把前端头像从本地文件切到 `profile.avatarUrl`。
-3. 增加 Vercel 预览域名或其他测试域名到后端 `FRONTEND_ORIGINS`。
-4. 补充更多页面模块，例如文章、标签页和项目详情。
-5. 完成域名绑定和线上回归检查。
+3. 补充更多页面模块，例如文章、标签页和项目详情。
+4. 完成域名绑定和线上回归检查。
+5. 如果要增加新的公开接口，同步更新 `frontend/api/[...route].ts` 的 allowlist。
 
 ## Vercel 部署
 
@@ -52,8 +53,10 @@
    - Framework Preset：`Vite`
    - Build Command：`npm run build`
    - Output Directory：`dist`
-6. 当前仓库已内置 `frontend/.env.production`，默认会请求生产后端域名。
-7. 点击 `Deploy`。
+6. 在前端 Vercel 项目的 Environment Variables 里新增：
+   - `BACKEND_API_BASE_URL`：你的后端线上地址，例如 `https://your-backend-project.vercel.app`
+7. 如果你之前在前端 Vercel 项目里配置过 `VITE_API_BASE_URL=https://...`，请删除它或改回 `/api`。
+8. 点击 `Deploy`。
 
 ### CLI 部署
 
@@ -72,4 +75,10 @@ vercel
 - In which directory is your code located?：输入 `./`
 - Want to modify these settings?：选 `N`
 
-如果后续你想覆盖默认后端地址，再到 Vercel 项目设置里补充 `VITE_API_BASE_URL`。
+部署前记得在前端 Vercel 项目里设置 `BACKEND_API_BASE_URL`。
+
+## 线上请求链路
+
+- 浏览器请求：`https://你的前端域名/api/profile`
+- 前端 Vercel Function 代理到：`BACKEND_API_BASE_URL/profile`
+- 浏览器不再直连后端域名，所以国内访问前端域名时不会因为后端域名不可达而直接超时
