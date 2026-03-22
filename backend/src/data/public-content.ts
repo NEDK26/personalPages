@@ -5,7 +5,7 @@ export const profile = {
   location: "China",
   timezone: "Asia/Shanghai",
   languages: ["zh-CN", "en"],
-  status: "building",
+  status: "building",                                                                                                                                                                                                                                                                                                     
   shortBio:
     "I build TypeScript backend systems, shape product ideas into APIs, and turn personal experiments into public-facing tools.",
   tags: ["TypeScript", "Node.js", "Hono", "Turso", "REST API"],
