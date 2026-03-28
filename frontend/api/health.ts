@@ -1,5 +1,5 @@
-const REQUEST_PATH = "/admin/profile";
-const ALLOWED_HTTP_METHODS = new Set(["PUT"]);
+const REQUEST_PATH = "/health";
+const ALLOWED_HTTP_METHODS = new Set(["GET", "HEAD"]);
 
 function getBackendBaseUrl() {
   const configuredBaseUrl =
@@ -30,25 +30,15 @@ function createErrorResponse(status: number, error: string, message?: string) {
 function buildUpstreamHeaders(request: Request) {
   const headers = new Headers();
   const accept = request.headers.get("accept");
-  const authorization = request.headers.get("authorization");
-  const contentType = request.headers.get("content-type");
 
   if (accept) {
     headers.set("accept", accept);
   }
 
-  if (authorization) {
-    headers.set("authorization", authorization);
-  }
-
-  if (contentType) {
-    headers.set("content-type", contentType);
-  }
-
   return headers;
 }
 
-function buildResponseHeaders(upstreamResponse: Response) {
+function buildResponseHeaders(upstreamResponse: Response, requestMethod: string) {
   const headers = new Headers();
   const contentType = upstreamResponse.headers.get("content-type");
   const cacheControl = upstreamResponse.headers.get("cache-control");
@@ -57,7 +47,13 @@ function buildResponseHeaders(upstreamResponse: Response) {
     headers.set("content-type", contentType);
   }
 
-  headers.set("cache-control", cacheControl ?? "no-store");
+  if (cacheControl) {
+    headers.set("cache-control", cacheControl);
+  } else if (requestMethod !== "GET") {
+    headers.set("cache-control", "no-store");
+  } else if (upstreamResponse.ok) {
+    headers.set("cache-control", "public, s-maxage=60, stale-while-revalidate=300");
+  }
 
   return headers;
 }
@@ -84,19 +80,18 @@ export default {
     }
 
     const upstreamUrl = new URL(`${backendBaseUrl}${REQUEST_PATH}`);
+    upstreamUrl.search = new URL(request.url).search;
 
     try {
-      const requestBody = await request.arrayBuffer();
       const upstreamResponse = await fetch(upstreamUrl, {
         method: request.method,
         headers: buildUpstreamHeaders(request),
-        body: requestBody,
         redirect: "follow",
       });
 
       return new Response(upstreamResponse.body, {
         status: upstreamResponse.status,
-        headers: buildResponseHeaders(upstreamResponse),
+        headers: buildResponseHeaders(upstreamResponse, request.method),
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown upstream error";
