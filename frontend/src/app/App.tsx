@@ -1,6 +1,8 @@
 import {
   AlertCircle,
   CalendarDays,
+  ChevronLeft,
+  ChevronRight,
   Clock3,
   Github,
   Globe,
@@ -25,8 +27,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "./components/ui/dialog";
-import { fetchPublicContent } from "../lib/api";
-import type { HighlightItem, LifeMoment, Now, Profile, PublicContent } from "../types/public";
+import { fetchMoreLives, fetchPublicContent } from "../lib/api";
+import type { HighlightItem, LifeMoment, LivesPageInfo, Now, Profile, PublicContent } from "../types/public";
 
 type PublicContentState =
   | { status: "loading" }
@@ -75,6 +77,10 @@ interface HighlightsSectionProps {
 
 interface LivesSectionProps {
   lives: LifeMoment[];
+  pageInfo: LivesPageInfo;
+  isLoadingMore: boolean;
+  loadMoreError: string | null;
+  onLoadMore: () => void;
   sectionId?: string;
 }
 
@@ -93,6 +99,10 @@ interface ActiveSectionPanelProps {
   profile: Profile;
   now: Now;
   lives: LifeMoment[];
+  livesPageInfo: LivesPageInfo;
+  isLoadingMoreLives: boolean;
+  loadMoreLivesError: string | null;
+  onLoadMoreLives: () => void;
   highlights: HighlightItem[];
 }
 
@@ -294,20 +304,90 @@ function HighlightsSection({ highlights, sectionId }: HighlightsSectionProps) {
   );
 }
 
-function LivesSection({ lives, sectionId }: LivesSectionProps) {
-  const [selectedLife, setSelectedLife] = useState<LifeMoment | null>(null);
+function LivesSection({
+  lives,
+  pageInfo,
+  isLoadingMore,
+  loadMoreError,
+  onLoadMore,
+  sectionId,
+}: LivesSectionProps) {
+  const [selectedLifeIndex, setSelectedLifeIndex] = useState<number | null>(null);
+  const selectedLife = selectedLifeIndex === null ? null : lives[selectedLifeIndex];
+  const hasPreviousLife = selectedLifeIndex !== null && selectedLifeIndex > 0;
+  const hasNextLife = selectedLifeIndex !== null && selectedLifeIndex < lives.length - 1;
+
+  useEffect(() => {
+    if (selectedLifeIndex === null) {
+      return;
+    }
+
+    function handleKeydown(event: KeyboardEvent) {
+      if (event.key === "ArrowLeft" && hasPreviousLife) {
+        event.preventDefault();
+        setSelectedLifeIndex((currentIndex) => {
+          if (currentIndex === null || currentIndex <= 0) {
+            return currentIndex;
+          }
+
+          return currentIndex - 1;
+        });
+      }
+
+      if (event.key === "ArrowRight" && hasNextLife) {
+        event.preventDefault();
+        setSelectedLifeIndex((currentIndex) => {
+          if (currentIndex === null || currentIndex >= lives.length - 1) {
+            return currentIndex;
+          }
+
+          return currentIndex + 1;
+        });
+      }
+    }
+
+    window.addEventListener("keydown", handleKeydown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeydown);
+    };
+  }, [hasNextLife, hasPreviousLife, lives.length, selectedLifeIndex]);
+
+  function handleOpenLife(index: number) {
+    setSelectedLifeIndex(index);
+  }
+
+  function handleShowPreviousLife() {
+    setSelectedLifeIndex((currentIndex) => {
+      if (currentIndex === null || currentIndex <= 0) {
+        return currentIndex;
+      }
+
+      return currentIndex - 1;
+    });
+  }
+
+  function handleShowNextLife() {
+    setSelectedLifeIndex((currentIndex) => {
+      if (currentIndex === null || currentIndex >= lives.length - 1) {
+        return currentIndex;
+      }
+
+      return currentIndex + 1;
+    });
+  }
 
   return (
     <SectionShell title="Lives" eyebrow="Photo Journal" sectionId={sectionId}>
-      <Dialog open={selectedLife !== null} onOpenChange={(open) => !open && setSelectedLife(null)}>
+      <Dialog open={selectedLife !== null} onOpenChange={(open) => !open && setSelectedLifeIndex(null)}>
         <ResponsiveMasonry columnsCountBreakPoints={{ 0: 2, 768: 3, 1200: 4 }}>
-          <Masonry gutter="12px">
-            {lives.map((life) => (
+          <Masonry gutter="6px">
+            {lives.map((life, index) => (
               <button
                 key={life.id}
                 type="button"
                 aria-label={`查看 ${life.title}`}
-                onClick={() => setSelectedLife(life)}
+                onClick={() => handleOpenLife(index)}
                 className="group relative block w-full overflow-hidden border border-white/65 bg-white/75 text-left shadow-sm transition-transform duration-300 hover:-translate-y-1 focus-visible:-translate-y-1 focus-visible:outline-hidden"
               >
                 <img
@@ -324,21 +404,61 @@ function LivesSection({ lives, sectionId }: LivesSectionProps) {
           </Masonry>
         </ResponsiveMasonry>
 
-        <DialogContent className="max-w-[calc(100%-1rem)] overflow-hidden border-white/70 bg-white/95 p-0 shadow-[0_24px_80px_rgba(88,28,135,0.14)] sm:max-w-3xl">
+        {(pageInfo.hasMore || loadMoreError) ? (
+          <div className="mt-4 flex flex-col items-center gap-3">
+            {pageInfo.hasMore ? (
+              <button
+                type="button"
+                onClick={onLoadMore}
+                disabled={isLoadingMore}
+                className="rounded-full border border-white/80 bg-white/85 px-5 py-2.5 text-sm text-slate-800 transition-colors hover:bg-white hover:text-purple-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isLoadingMore ? "正在加载更多照片..." : "加载更多照片"}
+              </button>
+            ) : null}
+
+            {loadMoreError ? <p className="text-sm text-rose-500">{loadMoreError}</p> : null}
+          </div>
+        ) : null}
+
+        <DialogContent className="max-w-[calc(100%-1rem)] overflow-hidden rounded-none border-white/70 bg-white/95 p-0 shadow-[0_24px_80px_rgba(88,28,135,0.14)] sm:max-w-4xl">
           {selectedLife ? (
-            <div className="grid gap-0 md:grid-cols-[minmax(0,1.1fr)_minmax(300px,0.9fr)]">
-              <div className="bg-slate-950/5">
+            <div className="grid gap-0 md:grid-cols-[minmax(0,1.25fr)_minmax(280px,0.75fr)]">
+              <div className="relative border-b border-white/70 bg-slate-950/5 md:border-r md:border-b-0">
                 <img
                   src={selectedLife.imageUrl}
                   alt={selectedLife.alt}
                   width={selectedLife.width}
                   height={selectedLife.height}
-                  className="h-full w-full object-cover"
+                  className="h-full min-h-[320px] w-full object-cover md:min-h-[640px]"
                 />
+
+                <button
+                  type="button"
+                  aria-label="查看上一张照片"
+                  onClick={handleShowPreviousLife}
+                  disabled={!hasPreviousLife}
+                  className="absolute left-3 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-none border border-white/80 bg-white/85 text-slate-900 transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-35"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+
+                <button
+                  type="button"
+                  aria-label="查看下一张照片"
+                  onClick={handleShowNextLife}
+                  disabled={!hasNextLife}
+                  className="absolute right-3 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-none border border-white/80 bg-white/85 text-slate-900 transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-35"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
               </div>
 
               <div className="flex flex-col justify-between p-5 sm:p-6">
                 <DialogHeader className="text-left">
+                  <div className="text-sm uppercase tracking-[0.24em] text-slate-500">
+                    {String((selectedLifeIndex ?? 0) + 1).padStart(2, "0")} / {String(lives.length).padStart(2, "0")}
+                  </div>
                   <DialogTitle className="text-2xl leading-tight text-slate-950">{selectedLife.title}</DialogTitle>
                   <div className="flex flex-wrap gap-2 text-sm text-slate-600">
                     <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-3 py-1">
@@ -439,7 +559,17 @@ function FloatingSectionNav({ activeSection, onSelect }: FloatingSectionNavProps
   );
 }
 
-function ActiveSectionPanel({ activeSection, profile, now, lives, highlights }: ActiveSectionPanelProps) {
+function ActiveSectionPanel({
+  activeSection,
+  profile,
+  now,
+  lives,
+  livesPageInfo,
+  isLoadingMoreLives,
+  loadMoreLivesError,
+  onLoadMoreLives,
+  highlights,
+}: ActiveSectionPanelProps) {
   switch (activeSection) {
     case "about":
       return <ProfileCard profile={profile} sectionId="about" />;
@@ -448,14 +578,23 @@ function ActiveSectionPanel({ activeSection, profile, now, lives, highlights }: 
     case "highlights":
       return <HighlightsSection highlights={highlights} sectionId="highlights" />;
     case "lives":
-      return <LivesSection lives={lives} sectionId="lives" />;
+      return (
+        <LivesSection
+          lives={lives}
+          pageInfo={livesPageInfo}
+          isLoadingMore={isLoadingMoreLives}
+          loadMoreError={loadMoreLivesError}
+          onLoadMore={onLoadMoreLives}
+          sectionId="lives"
+        />
+      );
     default:
       return <ProfileCard profile={profile} sectionId="about" />;
   }
 }
 
 function ReadyState({ data }: { data: PublicContent }) {
-  const { profile, now, lives, highlights } = data;
+  const { profile, now, highlights } = data;
   const [activeSection, setActiveSection] = useState<NavigationSectionId>(() => {
     if (typeof window === "undefined") {
       return "about";
@@ -464,6 +603,10 @@ function ReadyState({ data }: { data: PublicContent }) {
     return getSectionIdFromHash(window.location.hash);
   });
   const [panelDirection, setPanelDirection] = useState<PanelDirection>("forward");
+  const [lives, setLives] = useState(data.lives);
+  const [livesPageInfo, setLivesPageInfo] = useState(data.livesPageInfo);
+  const [isLoadingMoreLives, setIsLoadingMoreLives] = useState(false);
+  const [loadMoreLivesError, setLoadMoreLivesError] = useState<string | null>(null);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const touchCurrentRef = useRef<{ x: number; y: number } | null>(null);
 
@@ -554,6 +697,26 @@ function ReadyState({ data }: { data: PublicContent }) {
     }
   }
 
+  async function handleLoadMoreLives() {
+    if (isLoadingMoreLives || !livesPageInfo.hasMore || !livesPageInfo.nextCursor) {
+      return;
+    }
+
+    setIsLoadingMoreLives(true);
+    setLoadMoreLivesError(null);
+
+    try {
+      const nextLivesPage = await fetchMoreLives(livesPageInfo.nextCursor);
+
+      setLives((currentLives) => [...currentLives, ...nextLivesPage.items]);
+      setLivesPageInfo(nextLivesPage.pageInfo);
+    } catch (error) {
+      setLoadMoreLivesError(getErrorMessage(error));
+    } finally {
+      setIsLoadingMoreLives(false);
+    }
+  }
+
   return (
     <div className="mobile-page-padding relative min-h-screen overflow-hidden bg-gradient-to-b from-purple-200 via-purple-100 to-fuchsia-100 px-3 py-4 text-slate-800 sm:px-4 sm:py-6 md:py-8 lg:pb-8">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-72 lg:hidden">
@@ -596,6 +759,10 @@ function ReadyState({ data }: { data: PublicContent }) {
                 profile={profile}
                 now={now}
                 lives={lives}
+                livesPageInfo={livesPageInfo}
+                isLoadingMoreLives={isLoadingMoreLives}
+                loadMoreLivesError={loadMoreLivesError}
+                onLoadMoreLives={handleLoadMoreLives}
                 highlights={highlights}
               />
             </div>
@@ -614,6 +781,10 @@ function ReadyState({ data }: { data: PublicContent }) {
                 profile={profile}
                 now={now}
                 lives={lives}
+                livesPageInfo={livesPageInfo}
+                isLoadingMoreLives={isLoadingMoreLives}
+                loadMoreLivesError={loadMoreLivesError}
+                onLoadMoreLives={handleLoadMoreLives}
                 highlights={highlights}
               />
             </div>

@@ -6,11 +6,14 @@ import {
 } from "../types/public";
 import type {
   HighlightsResponse,
+  LivesPageInfo,
   LivesResponse,
   Now,
   Profile,
   PublicContent,
 } from "../types/public";
+
+const LIVES_PAGE_SIZE = 4;
 
 const apiConfig = {
   baseUrl: resolveBaseUrl(),
@@ -46,6 +49,18 @@ function buildApiUrl(path: string) {
   return path.startsWith("/") ? `${apiConfig.baseUrl}${path}` : `${apiConfig.baseUrl}/${path}`;
 }
 
+function buildLivesPath(cursor?: string | null, limit = LIVES_PAGE_SIZE) {
+  const searchParams = new URLSearchParams({
+    limit: String(limit),
+  });
+
+  if (cursor) {
+    searchParams.set("cursor", cursor);
+  }
+
+  return `/lives?${searchParams.toString()}`;
+}
+
 async function fetchJson<T>(
   path: string,
   guard: (value: unknown) => value is T,
@@ -73,7 +88,7 @@ export async function fetchPublicContent(signal?: AbortSignal): Promise<PublicCo
   const [profile, now, livesResponse, highlightsResponse] = await Promise.all([
     fetchJson<Profile>("/profile", isProfile, signal),
     fetchJson<Now>("/now", isNow, signal),
-    fetchJson<LivesResponse>("/lives", isLivesResponse, signal),
+    fetchJson<LivesResponse>(buildLivesPath(), isLivesResponse, signal),
     fetchJson<HighlightsResponse>("/highlights", isHighlightsResponse, signal),
   ]);
 
@@ -81,6 +96,19 @@ export async function fetchPublicContent(signal?: AbortSignal): Promise<PublicCo
     profile,
     now,
     lives: livesResponse.items,
+    livesPageInfo: livesResponse.pageInfo,
     highlights: highlightsResponse.items,
+  };
+}
+
+export async function fetchMoreLives(
+  cursor: string,
+  signal?: AbortSignal,
+): Promise<{ items: LivesResponse["items"]; pageInfo: LivesPageInfo }> {
+  const response = await fetchJson<LivesResponse>(buildLivesPath(cursor), isLivesResponse, signal);
+
+  return {
+    items: response.items,
+    pageInfo: response.pageInfo,
   };
 }

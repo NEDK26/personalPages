@@ -45,8 +45,14 @@ export interface HighlightItem {
   kind: HighlightKind;
 }
 
+export interface LivesPageInfo {
+  nextCursor: string | null;
+  hasMore: boolean;
+}
+
 export interface LivesResponse {
   items: LifeMoment[];
+  pageInfo: LivesPageInfo;
 }
 
 export interface HighlightsResponse {
@@ -57,6 +63,7 @@ export interface PublicContent {
   profile: Profile;
   now: Now;
   lives: LifeMoment[];
+  livesPageInfo: LivesPageInfo;
   highlights: HighlightItem[];
 }
 
@@ -157,12 +164,26 @@ function isHighlightItem(value: unknown): value is HighlightItem {
   );
 }
 
+function isLivesPageInfo(value: unknown): value is LivesPageInfo {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  const hasValidCursor = value.nextCursor === null || typeof value.nextCursor === "string";
+
+  return typeof value.hasMore === "boolean" && hasValidCursor;
+}
+
 export function isLivesResponse(value: unknown): value is LivesResponse {
   if (!isRecord(value)) {
     return false;
   }
 
-  return Array.isArray(value.items) && value.items.every((item) => isLifeMoment(item));
+  return (
+    Array.isArray(value.items) &&
+    value.items.every((item) => isLifeMoment(item)) &&
+    isLivesPageInfo(value.pageInfo)
+  );
 }
 
 export function isHighlightsResponse(value: unknown): value is HighlightsResponse {
