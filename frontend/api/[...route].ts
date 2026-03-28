@@ -23,6 +23,26 @@ function normalizeRequestPath(pathname: string) {
   return pathWithoutApiPrefix;
 }
 
+function normalizeRewrittenRoute(route: string) {
+  const trimmedRoute = route.trim().replace(/^\/+/, "");
+
+  if (trimmedRoute.length === 0) {
+    return "/";
+  }
+
+  return normalizeRequestPath(`/${trimmedRoute}`);
+}
+
+function resolveRequestPath(incomingUrl: URL) {
+  const rewrittenRoute = incomingUrl.searchParams.get("route");
+
+  if (rewrittenRoute) {
+    return normalizeRewrittenRoute(rewrittenRoute);
+  }
+
+  return normalizeRequestPath(incomingUrl.pathname);
+}
+
 function getBackendBaseUrl() {
   const configuredBaseUrl = process.env.BACKEND_API_BASE_URL?.trim();
 
@@ -103,7 +123,7 @@ export default {
     }
 
     const incomingUrl = new URL(request.url);
-    const requestPath = normalizeRequestPath(incomingUrl.pathname);
+    const requestPath = resolveRequestPath(incomingUrl);
 
     const isPublicRoute = PUBLIC_ROUTE_ALLOWLIST.has(requestPath);
     const isAdminRoute = requestPath.startsWith(ADMIN_ROUTE_PREFIX);
@@ -123,7 +143,9 @@ export default {
     }
 
     const upstreamUrl = new URL(`${backendBaseUrl}${requestPath}`);
-    upstreamUrl.search = incomingUrl.search;
+    const upstreamSearchParams = new URLSearchParams(incomingUrl.search);
+    upstreamSearchParams.delete("route");
+    upstreamUrl.search = upstreamSearchParams.toString();
 
     try {
       const requestBody = request.method === "GET" || request.method === "HEAD" ? undefined : request.body;
