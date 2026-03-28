@@ -1,4 +1,4 @@
-import { proxyToBackend } from "../src/server/vercel-proxy";
+import { proxyToBackend } from "./_lib/vercel-proxy";
 
 const PUBLIC_ROUTE_ALLOWLIST = new Set(["/health", "/highlights", "/lives", "/now", "/profile"]);
 

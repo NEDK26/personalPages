@@ -1,3 +1,3 @@
-import { createFixedProxyHandler } from "../../src/server/vercel-proxy";
+import { createFixedProxyHandler } from "../_lib/vercel-proxy";
 
 export default createFixedProxyHandler("/admin/highlights");
