@@ -344,9 +344,9 @@ function ProfileCard({ profile, sectionId }: ProfileCardProps) {
   return (
     <section
       id={sectionId}
-      className="scroll-mt-24 flex min-h-[calc(100svh-8.5rem)] flex-col items-center justify-center gap-4 rounded-[1.5rem] bg-white/72 px-4 py-5 text-center backdrop-blur-sm sm:min-h-0 sm:gap-5 sm:p-6 md:rounded-[2rem] md:border md:border-zinc-200 md:bg-white/80 md:p-8 md:shadow-sm"
+      className="scroll-mt-24 flex flex-col items-center rounded-[1.5rem] bg-white/72 px-4 py-4 text-center backdrop-blur-sm sm:px-6 sm:py-6 md:grid md:grid-cols-[11rem_minmax(0,1fr)] md:items-center md:gap-8 md:rounded-[2rem] md:border md:border-zinc-200 md:bg-white/80 md:px-8 md:py-8 md:text-left md:shadow-sm lg:grid-cols-[12rem_minmax(0,1fr)] lg:px-10"
     >
-      <div className="h-24 w-24 overflow-hidden rounded-full border-4 border-white bg-zinc-200 shadow-lg sm:h-28 sm:w-28 md:h-44 md:w-44 lg:h-48 lg:w-48">
+      <div className="mb-4 h-36 w-36 overflow-hidden rounded-full border-4 border-white bg-zinc-200 shadow-lg sm:mb-5 sm:h-40 sm:w-40 md:mb-0 md:h-44 md:w-44 lg:h-48 lg:w-48">
         <img
           src={avatarImage}
           alt={`${profile.name} avatar`}
@@ -354,43 +354,49 @@ function ProfileCard({ profile, sectionId }: ProfileCardProps) {
         />
       </div>
 
-      <div className="space-y-2 sm:space-y-3">
-        <h2 className="text-[1.75rem] leading-none text-slate-900 sm:text-3xl">{profile.name}</h2>
-        <p className="max-w-[22rem] text-sm leading-6 text-slate-700 sm:text-base sm:leading-7 md:text-lg">{profile.headline}</p>
-      </div>
+      <div className="flex w-full max-w-[24rem] flex-col items-center gap-3 md:max-w-none md:items-start md:gap-5">
+        <div className="flex w-full flex-col items-center gap-3 md:flex-row md:items-end md:justify-between md:gap-6">
+          <div className="space-y-2 md:space-y-3">
+            <h2 className="text-[1.9rem] leading-none text-slate-900 sm:text-[2.15rem] md:text-[2.5rem]">{profile.name}</h2>
+            <p className="text-sm leading-6 text-slate-700 sm:text-base sm:leading-7 md:max-w-none md:text-base lg:text-lg xl:whitespace-nowrap">
+              {profile.headline}
+            </p>
+          </div>
 
-      <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-slate-600 sm:gap-3 sm:text-sm">
-        <span className="inline-flex items-center gap-1 rounded-full bg-zinc-200 px-3 py-1">
-          <MapPin className="h-4 w-4" />
-          {profile.location}
-        </span>
-      </div>
+          <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-slate-600 sm:gap-3 sm:text-sm md:justify-start">
+            <span className="inline-flex items-center gap-1 rounded-full bg-zinc-200 px-3 py-1 md:shrink-0">
+              <MapPin className="h-4 w-4" />
+              {profile.location}
+            </span>
+          </div>
+        </div>
 
-      <div className="flex max-w-sm flex-wrap justify-center gap-1.5 sm:gap-2">
-        {profile.tags.map((tag) => (
-          <span key={tag} className="rounded-full bg-zinc-200 px-2.5 py-1 text-xs text-slate-700 sm:px-3 sm:text-sm">
-            {tag}
-          </span>
-        ))}
-      </div>
+        <div className="flex w-full flex-wrap justify-center gap-1.5 sm:gap-2 md:justify-start">
+          {profile.tags.map((tag) => (
+            <span key={tag} className="rounded-full bg-zinc-200 px-2.5 py-1 text-xs text-slate-700 sm:px-3 sm:text-sm">
+              {tag}
+            </span>
+          ))}
+        </div>
 
-      <div className="flex w-full flex-wrap justify-center gap-2.5 sm:gap-4">
-        {socialLinkConfig.map(({ key, label, icon: Icon }) => {
-          const href = profile.socials[key];
+        <div className="flex w-full flex-wrap justify-center gap-2.5 sm:gap-3 md:justify-start">
+          {socialLinkConfig.map(({ key, label, icon: Icon }) => {
+            const href = profile.socials[key];
 
-          return (
-            <a
-              key={key}
-              href={href}
-              aria-label={label}
-              className="rounded-full bg-white/90 p-2.5 text-slate-800 transition-colors hover:bg-zinc-100 hover:text-slate-950 sm:p-3"
-              target={opensNewTab(href) ? "_blank" : undefined}
-              rel={opensNewTab(href) ? "noreferrer" : undefined}
-            >
-              <Icon className="h-5 w-5" />
-            </a>
-          );
-        })}
+            return (
+              <a
+                key={key}
+                href={href}
+                aria-label={label}
+                className="rounded-full bg-white/90 p-2.5 text-slate-800 transition-colors hover:bg-zinc-100 hover:text-slate-950 sm:p-3"
+                target={opensNewTab(href) ? "_blank" : undefined}
+                rel={opensNewTab(href) ? "noreferrer" : undefined}
+              >
+                <Icon className="h-5 w-5" />
+              </a>
+            );
+          })}
+        </div>
       </div>
     </section>
   );
