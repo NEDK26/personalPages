@@ -1,10 +1,10 @@
 import {
   AlertCircle,
+  CalendarDays,
   Clock3,
-  ExternalLink,
   Github,
   Globe,
-  Link2,
+  Images,
   Mail,
   MapPin,
   Moon,
@@ -13,19 +13,27 @@ import {
   UserRound,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import Masonry, { ResponsiveMasonry } from "react-responsive-masonry";
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode, TouchEvent } from "react";
 
 import avatarImage from "../assets/avatar.jpg";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "./components/ui/dialog";
 import { fetchPublicContent } from "../lib/api";
-import type { HighlightItem, LinkItem, Now, Profile, PublicContent } from "../types/public";
+import type { HighlightItem, LifeMoment, Now, Profile, PublicContent } from "../types/public";
 
 type PublicContentState =
   | { status: "loading" }
   | { status: "error"; message: string }
   | { status: "ready"; data: PublicContent };
 
-type NavigationSectionId = "about" | "now" | "highlights" | "links";
+type NavigationSectionId = "about" | "now" | "highlights" | "lives";
 type PanelDirection = "forward" | "backward";
 type SocialLinkKey = keyof Profile["socials"];
 
@@ -65,8 +73,8 @@ interface HighlightsSectionProps {
   sectionId?: string;
 }
 
-interface LinksSectionProps {
-  links: LinkItem[];
+interface LivesSectionProps {
+  lives: LifeMoment[];
   sectionId?: string;
 }
 
@@ -84,7 +92,7 @@ interface ActiveSectionPanelProps {
   activeSection: NavigationSectionId;
   profile: Profile;
   now: Now;
-  links: LinkItem[];
+  lives: LifeMoment[];
   highlights: HighlightItem[];
 }
 
@@ -92,7 +100,7 @@ const navigationItems = [
   { id: "about", label: "About", mobileLabel: "About", icon: UserRound },
   { id: "now", label: "Now", mobileLabel: "Now", icon: Clock3 },
   { id: "highlights", label: "Highlights", mobileLabel: "Work", icon: Sparkles },
-  { id: "links", label: "Links", mobileLabel: "Links", icon: Link2 },
+  { id: "lives", label: "Lives", mobileLabel: "Lives", icon: Images },
 ] as const satisfies readonly NavigationItem[];
 
 const socialLinkConfig = [
@@ -101,17 +109,20 @@ const socialLinkConfig = [
   { key: "blog", label: "Blog", icon: Globe },
 ] as const satisfies readonly SocialLinkConfig[];
 
-function formatUpdatedAt(value: string) {
+function formatDate(
+  value: string,
+  options: Intl.DateTimeFormatOptions = {
+    month: "short",
+    day: "numeric",
+  },
+) {
   const parsedDate = new Date(value);
 
   if (Number.isNaN(parsedDate.getTime())) {
     return value;
   }
 
-  return new Intl.DateTimeFormat("zh-CN", {
-    month: "short",
-    day: "numeric",
-  }).format(parsedDate);
+  return new Intl.DateTimeFormat("zh-CN", options).format(parsedDate);
 }
 
 function getErrorMessage(error: unknown) {
@@ -186,8 +197,7 @@ function ProfileCard({ profile, sectionId }: ProfileCardProps) {
           <MapPin className="h-4 w-4" />
           {profile.location}
         </span>
-        <span className="rounded-full bg-white/80 px-3 py-1">{profile.timezone}</span>
-        <span className="rounded-full bg-white/80 px-3 py-1">{profile.status}</span>
+        <span className="rounded-full bg-white/80 px-3 py-1">{profile.languages.join(" / ")}</span>
       </div>
 
       <div className="mb-6 flex flex-wrap justify-center gap-2">
@@ -284,26 +294,75 @@ function HighlightsSection({ highlights, sectionId }: HighlightsSectionProps) {
   );
 }
 
-function LinksSection({ links, sectionId }: LinksSectionProps) {
+function LivesSection({ lives, sectionId }: LivesSectionProps) {
+  const [selectedLife, setSelectedLife] = useState<LifeMoment | null>(null);
+
   return (
-    <SectionShell title="Links" eyebrow="Reach Out" sectionId={sectionId}>
-      <div className="grid gap-3 md:grid-cols-3">
-        {links.map((link) => (
-          <a
-            key={`${link.type}-${link.label}`}
-            href={link.url}
-            className="flex flex-col items-start gap-3 rounded-[1.25rem] bg-white/88 px-4 py-4 text-slate-800 transition-colors hover:bg-white hover:text-purple-700 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:rounded-[1.5rem]"
-            target={opensNewTab(link.url) ? "_blank" : undefined}
-            rel={opensNewTab(link.url) ? "noreferrer" : undefined}
-          >
-            <div>
-              <div className="text-sm uppercase tracking-[0.24em] text-slate-500">{link.type}</div>
-              <div className="mt-1 text-lg text-slate-900">{link.label}</div>
+    <SectionShell title="Lives" eyebrow="Photo Journal" sectionId={sectionId}>
+      <Dialog open={selectedLife !== null} onOpenChange={(open) => !open && setSelectedLife(null)}>
+        <ResponsiveMasonry columnsCountBreakPoints={{ 0: 2, 768: 3, 1200: 4 }}>
+          <Masonry gutter="12px">
+            {lives.map((life) => (
+              <button
+                key={life.id}
+                type="button"
+                aria-label={`查看 ${life.title}`}
+                onClick={() => setSelectedLife(life)}
+                className="group relative block w-full overflow-hidden border border-white/65 bg-white/75 text-left shadow-sm transition-transform duration-300 hover:-translate-y-1 focus-visible:-translate-y-1 focus-visible:outline-hidden"
+              >
+                <img
+                  src={life.imageUrl}
+                  alt={life.alt}
+                  width={life.width}
+                  height={life.height}
+                  loading="lazy"
+                  className="h-auto w-full object-cover"
+                />
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/30 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-visible:opacity-100" />
+              </button>
+            ))}
+          </Masonry>
+        </ResponsiveMasonry>
+
+        <DialogContent className="max-w-[calc(100%-1rem)] overflow-hidden border-white/70 bg-white/95 p-0 shadow-[0_24px_80px_rgba(88,28,135,0.14)] sm:max-w-3xl">
+          {selectedLife ? (
+            <div className="grid gap-0 md:grid-cols-[minmax(0,1.1fr)_minmax(300px,0.9fr)]">
+              <div className="bg-slate-950/5">
+                <img
+                  src={selectedLife.imageUrl}
+                  alt={selectedLife.alt}
+                  width={selectedLife.width}
+                  height={selectedLife.height}
+                  className="h-full w-full object-cover"
+                />
+              </div>
+
+              <div className="flex flex-col justify-between p-5 sm:p-6">
+                <DialogHeader className="text-left">
+                  <DialogTitle className="text-2xl leading-tight text-slate-950">{selectedLife.title}</DialogTitle>
+                  <div className="flex flex-wrap gap-2 text-sm text-slate-600">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-3 py-1">
+                      <MapPin className="h-4 w-4" />
+                      {selectedLife.location}
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 shadow-sm">
+                      <CalendarDays className="h-4 w-4" />
+                      {formatDate(selectedLife.capturedAt, {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })}
+                    </span>
+                  </div>
+                  <DialogDescription className="text-base leading-7 text-slate-600">
+                    {selectedLife.description}
+                  </DialogDescription>
+                </DialogHeader>
+              </div>
             </div>
-            <ExternalLink className="h-5 w-5 shrink-0" />
-          </a>
-        ))}
-      </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </SectionShell>
   );
 }
@@ -380,7 +439,7 @@ function FloatingSectionNav({ activeSection, onSelect }: FloatingSectionNavProps
   );
 }
 
-function ActiveSectionPanel({ activeSection, profile, now, links, highlights }: ActiveSectionPanelProps) {
+function ActiveSectionPanel({ activeSection, profile, now, lives, highlights }: ActiveSectionPanelProps) {
   switch (activeSection) {
     case "about":
       return <ProfileCard profile={profile} sectionId="about" />;
@@ -388,15 +447,15 @@ function ActiveSectionPanel({ activeSection, profile, now, links, highlights }: 
       return <NowSection profile={profile} now={now} sectionId="now" />;
     case "highlights":
       return <HighlightsSection highlights={highlights} sectionId="highlights" />;
-    case "links":
-      return <LinksSection links={links} sectionId="links" />;
+    case "lives":
+      return <LivesSection lives={lives} sectionId="lives" />;
     default:
       return <ProfileCard profile={profile} sectionId="about" />;
   }
 }
 
 function ReadyState({ data }: { data: PublicContent }) {
-  const { profile, now, links, highlights } = data;
+  const { profile, now, lives, highlights } = data;
   const [activeSection, setActiveSection] = useState<NavigationSectionId>(() => {
     if (typeof window === "undefined") {
       return "about";
@@ -511,7 +570,7 @@ function ReadyState({ data }: { data: PublicContent }) {
               <Moon className="h-5 w-5 text-purple-700" />
             </div>
             <div className="text-xs text-slate-600 sm:text-sm">
-              最近更新于 <time dateTime={now.updatedAt}>{formatUpdatedAt(now.updatedAt)}</time>
+              最近更新于 <time dateTime={now.updatedAt}>{formatDate(now.updatedAt)}</time>
             </div>
           </div>
 
@@ -536,7 +595,7 @@ function ReadyState({ data }: { data: PublicContent }) {
                 activeSection={activeSection}
                 profile={profile}
                 now={now}
-                links={links}
+                lives={lives}
                 highlights={highlights}
               />
             </div>
@@ -554,7 +613,7 @@ function ReadyState({ data }: { data: PublicContent }) {
                 activeSection={activeSection}
                 profile={profile}
                 now={now}
-                links={links}
+                lives={lives}
                 highlights={highlights}
               />
             </div>
@@ -600,7 +659,7 @@ export default function App() {
           <RefreshCw className="mx-auto mb-4 h-10 w-10 animate-spin text-purple-700" />
           <h1 className="mb-2 text-xl text-slate-900 sm:text-2xl">正在连接后端</h1>
           <p className="text-sm leading-6 text-slate-600 sm:text-base sm:leading-relaxed">
-            正在读取个人资料、链接和项目亮点数据。
+            正在读取个人资料、生活照片和项目亮点数据。
           </p>
         </div>
       </div>

@@ -78,8 +78,15 @@ Run all commands below from `backend/` unless noted otherwise.
 - Start the API locally with `npm run dev`.
 - Check the root endpoint: `GET /`
 - Check health endpoint: `GET /health`
-- Check public endpoints: `GET /profile`, `GET /now`, `GET /links`, `GET /highlights`
+- Check public endpoints: `GET /profile`, `GET /now`, `GET /lives`, `GET /highlights`
 - When database credentials are absent, health should still respond and report database configuration accurately.
+
+## Post-change Run Rule
+
+- After adding or changing code, start the relevant local development server before finishing when the environment allows it.
+- For backend changes, run `npm run dev` from `backend/`.
+- For frontend changes, run `npm run dev` from `frontend/`.
+- For changes that touch both apps, start both local dev servers so the project can be checked end to end.
 
 ## Existing Technical Conventions
 

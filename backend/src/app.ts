@@ -25,7 +25,7 @@ app.get("/", (c) => {
       "/health",
       "/profile",
       "/now",
-      "/links",
+      "/lives",
       "/highlights",
     ],
   });

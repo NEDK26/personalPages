@@ -1,12 +1,12 @@
 import {
   isHighlightsResponse,
-  isLinksResponse,
+  isLivesResponse,
   isNow,
   isProfile,
 } from "../types/public";
 import type {
   HighlightsResponse,
-  LinksResponse,
+  LivesResponse,
   Now,
   Profile,
   PublicContent,
@@ -70,17 +70,17 @@ async function fetchJson<T>(
 }
 
 export async function fetchPublicContent(signal?: AbortSignal): Promise<PublicContent> {
-  const [profile, now, linksResponse, highlightsResponse] = await Promise.all([
+  const [profile, now, livesResponse, highlightsResponse] = await Promise.all([
     fetchJson<Profile>("/profile", isProfile, signal),
     fetchJson<Now>("/now", isNow, signal),
-    fetchJson<LinksResponse>("/links", isLinksResponse, signal),
+    fetchJson<LivesResponse>("/lives", isLivesResponse, signal),
     fetchJson<HighlightsResponse>("/highlights", isHighlightsResponse, signal),
   ]);
 
   return {
     profile,
     now,
-    links: linksResponse.items,
+    lives: livesResponse.items,
     highlights: highlightsResponse.items,
   };
 }

@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 
-import { highlights, links, now, profile } from "../data/public-content";
+import { highlights, lives, now, profile } from "../data/public-content";
 
 const publicRouter = new Hono();
 
@@ -12,9 +12,9 @@ publicRouter.get("/now", (c) => {
   return c.json(now);
 });
 
-publicRouter.get("/links", (c) => {
+publicRouter.get("/lives", (c) => {
   return c.json({
-    items: links,
+    items: lives,
   });
 });
 

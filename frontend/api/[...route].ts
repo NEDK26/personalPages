@@ -1,7 +1,7 @@
 const PUBLIC_ROUTE_ALLOWLIST = new Set([
   "/health",
   "/highlights",
-  "/links",
+  "/lives",
   "/now",
   "/profile",
 ]);

@@ -1,7 +1,5 @@
-export const linkTypes = ["code", "website", "contact"] as const satisfies readonly string[];
 export const highlightKinds = ["project", "approach", "skill"] as const satisfies readonly string[];
 
-export type LinkType = (typeof linkTypes)[number];
 export type HighlightKind = (typeof highlightKinds)[number];
 
 export interface ProfileSocials {
@@ -15,9 +13,7 @@ export interface Profile {
   headline: string;
   avatarUrl: string;
   location: string;
-  timezone: string;
   languages: string[];
-  status: string;
   shortBio: string;
   tags: string[];
   socials: ProfileSocials;
@@ -31,10 +27,16 @@ export interface Now {
   updatedAt: string;
 }
 
-export interface LinkItem {
-  label: string;
-  url: string;
-  type: LinkType;
+export interface LifeMoment {
+  id: string;
+  title: string;
+  imageUrl: string;
+  alt: string;
+  location: string;
+  capturedAt: string;
+  description: string;
+  width: number;
+  height: number;
 }
 
 export interface HighlightItem {
@@ -43,8 +45,8 @@ export interface HighlightItem {
   kind: HighlightKind;
 }
 
-export interface LinksResponse {
-  items: LinkItem[];
+export interface LivesResponse {
+  items: LifeMoment[];
 }
 
 export interface HighlightsResponse {
@@ -54,7 +56,7 @@ export interface HighlightsResponse {
 export interface PublicContent {
   profile: Profile;
   now: Now;
-  links: LinkItem[];
+  lives: LifeMoment[];
   highlights: HighlightItem[];
 }
 
@@ -68,6 +70,10 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string");
 }
 
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
 function createLiteralUnionGuard<const TValues extends readonly string[]>(values: TValues) {
   const knownValues = new Set<string>(values);
 
@@ -76,7 +82,6 @@ function createLiteralUnionGuard<const TValues extends readonly string[]>(values
   };
 }
 
-const isLinkType = createLiteralUnionGuard(linkTypes);
 const isHighlightKind = createLiteralUnionGuard(highlightKinds);
 
 function isProfileSocials(value: unknown): value is ProfileSocials {
@@ -101,9 +106,7 @@ export function isProfile(value: unknown): value is Profile {
     typeof value.headline === "string" &&
     typeof value.avatarUrl === "string" &&
     typeof value.location === "string" &&
-    typeof value.timezone === "string" &&
     isStringArray(value.languages) &&
-    typeof value.status === "string" &&
     typeof value.shortBio === "string" &&
     isStringArray(value.tags) &&
     isProfileSocials(value.socials)
@@ -124,15 +127,21 @@ export function isNow(value: unknown): value is Now {
   );
 }
 
-function isLinkItem(value: unknown): value is LinkItem {
+function isLifeMoment(value: unknown): value is LifeMoment {
   if (!isRecord(value)) {
     return false;
   }
 
   return (
-    typeof value.label === "string" &&
-    typeof value.url === "string" &&
-    isLinkType(value.type)
+    typeof value.id === "string" &&
+    typeof value.title === "string" &&
+    typeof value.imageUrl === "string" &&
+    typeof value.alt === "string" &&
+    typeof value.location === "string" &&
+    typeof value.capturedAt === "string" &&
+    typeof value.description === "string" &&
+    isFiniteNumber(value.width) &&
+    isFiniteNumber(value.height)
   );
 }
 
@@ -148,12 +157,12 @@ function isHighlightItem(value: unknown): value is HighlightItem {
   );
 }
 
-export function isLinksResponse(value: unknown): value is LinksResponse {
+export function isLivesResponse(value: unknown): value is LivesResponse {
   if (!isRecord(value)) {
     return false;
   }
 
-  return Array.isArray(value.items) && value.items.every((item) => isLinkItem(item));
+  return Array.isArray(value.items) && value.items.every((item) => isLifeMoment(item));
 }
 
 export function isHighlightsResponse(value: unknown): value is HighlightsResponse {
