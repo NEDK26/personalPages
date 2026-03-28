@@ -4,11 +4,17 @@ import { env } from "../config/env";
 import {
   getHighlightsContent,
   getLivesContent,
+  getNowContent,
+  getProfileContent,
   highlightsPayloadSchema,
   isAdminEditingEnabled,
   livesPayloadSchema,
+  nowPayloadSchema,
+  profilePayloadSchema,
   saveHighlightsContent,
   saveLivesContent,
+  saveNowContent,
+  saveProfileContent,
 } from "../data/public-content-store";
 
 const adminRouter = new Hono();
@@ -97,13 +103,66 @@ adminRouter.use("/admin/*", async (c, next) => {
 });
 
 adminRouter.get("/admin/content", async (c) => {
-  const [lives, highlights] = await Promise.all([getLivesContent(), getHighlightsContent()]);
+  const [profile, now, lives, highlights] = await Promise.all([
+    getProfileContent(),
+    getNowContent(true),
+    getLivesContent(true),
+    getHighlightsContent(true),
+  ]);
 
   return c.json({
+    profile,
+    now,
     lives,
     highlights,
     editingEnabled: isAdminEditingEnabled(),
   });
+});
+
+adminRouter.put("/admin/profile", async (c) => {
+  if (!isAdminEditingEnabled()) {
+    return createEditingUnavailableResponse();
+  }
+
+  const payload: unknown = await c.req.json();
+  const parsedPayload = profilePayloadSchema.safeParse(payload);
+
+  if (!parsedPayload.success) {
+    return c.json(
+      {
+        error: "Invalid profile payload",
+        issues: parsedPayload.error.issues,
+      },
+      400,
+    );
+  }
+
+  const content = await saveProfileContent(parsedPayload.data);
+
+  return c.json(content);
+});
+
+adminRouter.put("/admin/now", async (c) => {
+  if (!isAdminEditingEnabled()) {
+    return createEditingUnavailableResponse();
+  }
+
+  const payload: unknown = await c.req.json();
+  const parsedPayload = nowPayloadSchema.safeParse(payload);
+
+  if (!parsedPayload.success) {
+    return c.json(
+      {
+        error: "Invalid now payload",
+        issues: parsedPayload.error.issues,
+      },
+      400,
+    );
+  }
+
+  const content = await saveNowContent(parsedPayload.data);
+
+  return c.json(content);
 });
 
 adminRouter.put("/admin/lives", async (c) => {

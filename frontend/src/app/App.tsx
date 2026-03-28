@@ -1,9 +1,12 @@
 import {
   AlertCircle,
+  BriefcaseBusiness,
   CalendarDays,
   ChevronLeft,
   ChevronRight,
   Clock3,
+  ExternalLink,
+  GraduationCap,
   Github,
   Globe,
   Images,
@@ -38,9 +41,13 @@ import {
   loginAdmin,
   saveAdminHighlights,
   saveAdminLives,
+  saveAdminNow,
+  saveAdminProfile,
 } from "../lib/api";
 import type {
+  ContentStatus,
   HighlightItem,
+  JourneyItem,
   LifeMoment,
   LivesPageInfo,
   Now,
@@ -56,7 +63,7 @@ type PublicContentState =
 type NavigationSectionId = "about" | "now" | "highlights" | "lives";
 type PanelDirection = "forward" | "backward";
 type SocialLinkKey = keyof Profile["socials"];
-type AdminEditorTab = "lives" | "highlights";
+type AdminEditorTab = "profile" | "now" | "lives" | "highlights";
 
 interface AdminCredentials {
   username: string;
@@ -89,7 +96,6 @@ interface ProfileCardProps {
 }
 
 interface NowSectionProps {
-  profile: Profile;
   now: Now;
   sectionId?: string;
 }
@@ -133,8 +139,12 @@ interface ActiveSectionPanelProps {
 interface AdminDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  profile: Profile;
+  now: Now;
   lives: LifeMoment[];
   highlights: HighlightItem[];
+  onReplaceProfile: (content: Profile) => void;
+  onReplaceNow: (content: Now) => void;
   onReplaceLives: (items: LifeMoment[]) => void;
   onReplaceHighlights: (items: HighlightItem[]) => void;
 }
@@ -144,8 +154,8 @@ const ADMIN_HASH = "#admin";
 
 const navigationItems = [
   { id: "about", label: "About", mobileLabel: "About", icon: UserRound },
-  { id: "now", label: "Now", mobileLabel: "Now", icon: Clock3 },
-  { id: "highlights", label: "Highlights", mobileLabel: "Work", icon: Sparkles },
+  { id: "now", label: "Journey", mobileLabel: "Path", icon: Clock3 },
+  { id: "highlights", label: "Projects", mobileLabel: "Work", icon: Sparkles },
   { id: "lives", label: "Lives", mobileLabel: "Lives", icon: Images },
 ] as const satisfies readonly NavigationItem[];
 
@@ -218,14 +228,41 @@ function createEmptyLifeMoment() {
     description: "",
     width: 1200,
     height: 1600,
+    status: "published",
+    sortOrder: 0,
   } satisfies LifeMoment;
 }
 
-function createEmptyHighlightItem() {
+function createEmptyJourneyItem() {
+  const now = Date.now().toString();
+
   return {
+    id: `journey-${now}`,
+    type: "education",
     title: "",
+    organization: "",
+    location: "",
+    period: "",
+    description: "",
+    status: "published",
+    sortOrder: 0,
+  } satisfies JourneyItem;
+}
+
+function createEmptyHighlightItem() {
+  const now = Date.now().toString();
+
+  return {
+    id: `project-${now}`,
+    title: "",
+    summary: "",
     description: "",
     kind: "project",
+    period: "",
+    stack: [],
+    link: "",
+    status: "published",
+    sortOrder: 0,
   } satisfies HighlightItem;
 }
 
@@ -271,7 +308,6 @@ function ProfileCard({ profile, sectionId }: ProfileCardProps) {
           <MapPin className="h-4 w-4" />
           {profile.location}
         </span>
-        <span className="rounded-full bg-white/80 px-3 py-1">{profile.languages.join(" / ")}</span>
       </div>
 
       <div className="mb-6 flex flex-wrap justify-center gap-2">
@@ -304,66 +340,108 @@ function ProfileCard({ profile, sectionId }: ProfileCardProps) {
   );
 }
 
-function NowSection({ profile, now, sectionId }: NowSectionProps) {
+function NowSection({ now, sectionId }: NowSectionProps) {
   return (
-    <SectionShell title="Now" eyebrow="Live Status" sectionId={sectionId}>
-      <div className="mb-4 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-        <p className="text-base leading-7 text-slate-800 sm:text-lg">{now.focus}</p>
-        <span className="hidden rounded-full bg-zinc-200 px-3 py-1 text-sm text-slate-700 sm:inline-flex">
-          {profile.languages.join(" / ")}
-        </span>
-      </div>
+    <SectionShell title="Journey" eyebrow="Growth Path" sectionId={sectionId}>
+      <p className="mb-5 text-sm leading-7 text-slate-600 sm:text-base">{now.summary}</p>
 
-      <p className="mb-5 text-sm leading-6 text-slate-600 sm:text-base sm:leading-relaxed">{now.availability}</p>
+      <div className="grid gap-4">
+        {now.items.map((item) => {
+          const Icon = item.type === "education" ? GraduationCap : BriefcaseBusiness;
+          const typeLabel = item.type === "education" ? "Education" : "Work";
 
-      <div className="mb-5 flex flex-wrap gap-2 sm:hidden">
-        {profile.languages.map((language) => (
-          <span key={language} className="rounded-full bg-zinc-200 px-3 py-1 text-sm text-slate-700">
-            {language}
-          </span>
-        ))}
-      </div>
+          return (
+            <article key={item.id} className="rounded-[1.5rem] border border-zinc-200 bg-white/90 p-4 shadow-sm sm:p-5">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex items-start gap-3">
+                  <div className="rounded-full bg-zinc-200 p-3 text-slate-900">
+                    <Icon className="h-5 w-5" />
+                  </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <div>
-          <h4 className="mb-2 text-sm uppercase tracking-[0.24em] text-slate-500">Learning</h4>
-          <div className="flex flex-wrap gap-2">
-            {now.learning.map((item) => (
-              <span key={item} className="rounded-full border border-zinc-200 bg-white/90 px-3 py-1 text-sm text-slate-700">
-                {item}
-              </span>
-            ))}
-          </div>
-        </div>
-        <div>
-          <h4 className="mb-2 text-sm uppercase tracking-[0.24em] text-slate-500">Shipping</h4>
-          <div className="flex flex-wrap gap-2">
-            {now.shipping.map((item) => (
-              <span key={item} className="rounded-full border border-zinc-200 bg-white/90 px-3 py-1 text-sm text-slate-700">
-                {item}
-              </span>
-            ))}
-          </div>
-        </div>
+                  <div>
+                    <span className="inline-flex rounded-full bg-zinc-200 px-3 py-1 text-xs uppercase tracking-[0.24em] text-slate-700">
+                      {typeLabel}
+                    </span>
+                    <h4 className="mt-3 text-lg text-slate-950">{item.title}</h4>
+                    <p className="mt-1 text-sm text-slate-500">{item.organization}</p>
+                  </div>
+                </div>
+
+                <div className="flex flex-col items-start gap-2 text-sm text-slate-500 sm:items-end">
+                  <span className="rounded-full border border-zinc-200 bg-white px-3 py-1">{item.period}</span>
+                  <span className="inline-flex items-center gap-1 rounded-full border border-zinc-200 bg-white px-3 py-1">
+                    <MapPin className="h-4 w-4" />
+                    {item.location}
+                  </span>
+                </div>
+              </div>
+
+              <p className="mt-4 leading-7 text-slate-600">{item.description}</p>
+            </article>
+          );
+        })}
       </div>
     </SectionShell>
   );
 }
 
 function HighlightsSection({ highlights, sectionId }: HighlightsSectionProps) {
+  const [selectedHighlight, setSelectedHighlight] = useState<HighlightItem | null>(null);
+
   return (
-    <SectionShell title="Highlights" eyebrow="Selected Work" sectionId={sectionId}>
+    <SectionShell title="Projects" eyebrow="Project Experience" sectionId={sectionId}>
       <div className="grid gap-4 md:grid-cols-3">
         {highlights.map((highlight) => (
-          <article key={highlight.title} className="rounded-[1.25rem] border border-zinc-200 bg-white/90 p-4 shadow-sm sm:rounded-[1.5rem]">
+          <button
+            key={highlight.id}
+            type="button"
+            onClick={() => setSelectedHighlight(highlight)}
+            className="rounded-[1.25rem] border border-zinc-200 bg-white/90 p-4 text-left shadow-sm transition-transform duration-300 hover:-translate-y-1 focus-visible:-translate-y-1 focus-visible:outline-hidden sm:rounded-[1.5rem]"
+          >
             <span className="mb-3 inline-flex rounded-full bg-zinc-200 px-3 py-1 text-xs uppercase tracking-[0.24em] text-slate-700">
               {highlight.kind}
             </span>
             <h4 className="mb-2 text-lg text-slate-900">{highlight.title}</h4>
-            <p className="leading-relaxed text-slate-600">{highlight.description}</p>
-          </article>
+            <p className="text-sm text-slate-500">{highlight.period}</p>
+            <p className="mt-3 leading-relaxed text-slate-600">{highlight.summary}</p>
+          </button>
         ))}
       </div>
+
+      <Dialog open={selectedHighlight !== null} onOpenChange={(open) => !open && setSelectedHighlight(null)}>
+        <DialogContent className="max-w-[calc(100%-1rem)] border-zinc-200 bg-white/96 shadow-[0_24px_80px_rgba(15,23,42,0.16)] sm:max-w-2xl">
+          {selectedHighlight ? (
+            <DialogHeader className="text-left">
+              <span className="inline-flex w-fit rounded-full bg-zinc-200 px-3 py-1 text-xs uppercase tracking-[0.24em] text-slate-700">
+                {selectedHighlight.kind}
+              </span>
+              <DialogTitle className="text-2xl text-slate-950">{selectedHighlight.title}</DialogTitle>
+              <div className="flex flex-wrap gap-2 text-sm text-slate-500">
+                <span className="rounded-full border border-zinc-200 bg-white px-3 py-1">{selectedHighlight.period}</span>
+                {selectedHighlight.stack.map((item) => (
+                  <span key={item} className="rounded-full border border-zinc-200 bg-zinc-100 px-3 py-1 text-slate-600">
+                    {item}
+                  </span>
+                ))}
+              </div>
+              <DialogDescription className="text-base leading-7 text-slate-600">
+                {selectedHighlight.description}
+              </DialogDescription>
+              {selectedHighlight.link ? (
+                <a
+                  href={selectedHighlight.link}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm text-slate-800 transition-colors hover:bg-zinc-100 hover:text-slate-950"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  查看相关链接
+                </a>
+              ) : null}
+            </DialogHeader>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </SectionShell>
   );
 }
@@ -592,11 +670,24 @@ function LivesSection({
   );
 }
 
-function AdminDialog({ open, onOpenChange, lives, highlights, onReplaceLives, onReplaceHighlights }: AdminDialogProps) {
-  const [adminTab, setAdminTab] = useState<AdminEditorTab>("lives");
+function AdminDialog({
+  open,
+  onOpenChange,
+  profile,
+  now,
+  lives,
+  highlights,
+  onReplaceProfile,
+  onReplaceNow,
+  onReplaceLives,
+  onReplaceHighlights,
+}: AdminDialogProps) {
+  const [adminTab, setAdminTab] = useState<AdminEditorTab>("profile");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [credentials, setCredentials] = useState<AdminCredentials | null>(null);
+  const [draftProfile, setDraftProfile] = useState<Profile>(profile);
+  const [draftNow, setDraftNow] = useState<Now>(now);
   const [draftLives, setDraftLives] = useState<LifeMoment[]>(lives);
   const [draftHighlights, setDraftHighlights] = useState<HighlightItem[]>(highlights);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
@@ -604,6 +695,14 @@ function AdminDialog({ open, onOpenChange, lives, highlights, onReplaceLives, on
   const [isSaving, setIsSaving] = useState(false);
   const [adminError, setAdminError] = useState<string | null>(null);
   const [editingEnabled, setEditingEnabled] = useState(true);
+
+  useEffect(() => {
+    setDraftProfile(profile);
+  }, [profile]);
+
+  useEffect(() => {
+    setDraftNow(now);
+  }, [now]);
 
   useEffect(() => {
     setDraftLives(lives);
@@ -651,6 +750,8 @@ function AdminDialog({ open, onOpenChange, lives, highlights, onReplaceLives, on
     try {
       const content = await fetchAdminContent(nextCredentials.username, nextCredentials.password);
 
+      setDraftProfile(content.profile);
+      setDraftNow(content.now);
       setDraftLives(content.lives);
       setDraftHighlights(content.highlights);
       setEditingEnabled(content.editingEnabled);
@@ -658,6 +759,130 @@ function AdminDialog({ open, onOpenChange, lives, highlights, onReplaceLives, on
       setAdminError(getErrorMessage(error));
     } finally {
       setIsLoadingContent(false);
+    }
+  }
+
+  function updateDraftProfileField(key: keyof Profile, value: string | string[] | Profile["socials"]) {
+    setDraftProfile((currentProfile) => ({
+      ...currentProfile,
+      [key]: value,
+    }));
+  }
+
+  function updateDraftProfileSocial(key: keyof Profile["socials"], value: string) {
+    setDraftProfile((currentProfile) => ({
+      ...currentProfile,
+      socials: {
+        ...currentProfile.socials,
+        [key]: value,
+      },
+    }));
+  }
+
+  function updateDraftProfileTags(value: string) {
+    setDraftProfile((currentProfile) => ({
+      ...currentProfile,
+      tags: value
+        .split(",")
+        .map((item) => item.trim())
+        .filter((item) => item.length > 0),
+    }));
+  }
+
+  async function handleSaveProfile() {
+    if (!credentials) {
+      return;
+    }
+
+    setIsSaving(true);
+    setAdminError(null);
+
+    try {
+      const savedProfile = await saveAdminProfile(credentials.username, credentials.password, draftProfile);
+
+      setDraftProfile(savedProfile);
+      onReplaceProfile(savedProfile);
+      onOpenChange(false);
+    } catch (error) {
+      setAdminError(getErrorMessage(error));
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  function updateDraftNowField(key: keyof Now, value: string) {
+    setDraftNow((currentNow) => ({
+      ...currentNow,
+      [key]: value,
+    }));
+  }
+
+  function updateDraftJourneyItem(index: number, key: keyof JourneyItem, value: string) {
+    setDraftNow((currentNow) => ({
+      ...currentNow,
+      items: currentNow.items.map((item, currentIndex) => {
+        if (currentIndex !== index) {
+          return item;
+        }
+
+        return {
+          ...item,
+          [key]: value,
+        };
+      }),
+    }));
+  }
+
+  function updateDraftJourneyStatus(index: number, value: ContentStatus) {
+    setDraftNow((currentNow) => ({
+      ...currentNow,
+      items: currentNow.items.map((item, currentIndex) => {
+        if (currentIndex !== index) {
+          return item;
+        }
+
+        return {
+          ...item,
+          status: value,
+        };
+      }),
+    }));
+  }
+
+  function updateDraftJourneySortOrder(index: number, value: number) {
+    setDraftNow((currentNow) => ({
+      ...currentNow,
+      items: currentNow.items.map((item, currentIndex) => {
+        if (currentIndex !== index) {
+          return item;
+        }
+
+        return {
+          ...item,
+          sortOrder: value,
+        };
+      }),
+    }));
+  }
+
+  async function handleSaveNow() {
+    if (!credentials) {
+      return;
+    }
+
+    setIsSaving(true);
+    setAdminError(null);
+
+    try {
+      const savedNow = await saveAdminNow(credentials.username, credentials.password, draftNow);
+
+      setDraftNow(savedNow);
+      onReplaceNow(savedNow);
+      onOpenChange(false);
+    } catch (error) {
+      setAdminError(getErrorMessage(error));
+    } finally {
+      setIsSaving(false);
     }
   }
 
@@ -717,6 +942,36 @@ function AdminDialog({ open, onOpenChange, lives, highlights, onReplaceLives, on
     });
   }
 
+  function updateDraftLifeStatus(index: number, value: ContentStatus) {
+    setDraftLives((currentLives) => {
+      return currentLives.map((life, currentIndex) => {
+        if (currentIndex !== index) {
+          return life;
+        }
+
+        return {
+          ...life,
+          status: value,
+        };
+      });
+    });
+  }
+
+  function updateDraftLifeSortOrder(index: number, value: number) {
+    setDraftLives((currentLives) => {
+      return currentLives.map((life, currentIndex) => {
+        if (currentIndex !== index) {
+          return life;
+        }
+
+        return {
+          ...life,
+          sortOrder: value,
+        };
+      });
+    });
+  }
+
   function updateDraftHighlight(index: number, key: keyof HighlightItem, value: string) {
     setDraftHighlights((currentHighlights) => {
       return currentHighlights.map((highlight, currentIndex) => {
@@ -727,6 +982,54 @@ function AdminDialog({ open, onOpenChange, lives, highlights, onReplaceLives, on
         return {
           ...highlight,
           [key]: value,
+        };
+      });
+    });
+  }
+
+  function updateDraftHighlightStatus(index: number, value: ContentStatus) {
+    setDraftHighlights((currentHighlights) => {
+      return currentHighlights.map((highlight, currentIndex) => {
+        if (currentIndex !== index) {
+          return highlight;
+        }
+
+        return {
+          ...highlight,
+          status: value,
+        };
+      });
+    });
+  }
+
+  function updateDraftHighlightSortOrder(index: number, value: number) {
+    setDraftHighlights((currentHighlights) => {
+      return currentHighlights.map((highlight, currentIndex) => {
+        if (currentIndex !== index) {
+          return highlight;
+        }
+
+        return {
+          ...highlight,
+          sortOrder: value,
+        };
+      });
+    });
+  }
+
+  function updateDraftHighlightStack(index: number, value: string) {
+    setDraftHighlights((currentHighlights) => {
+      return currentHighlights.map((highlight, currentIndex) => {
+        if (currentIndex !== index) {
+          return highlight;
+        }
+
+        return {
+          ...highlight,
+          stack: value
+            .split(",")
+            .map((item) => item.trim())
+            .filter((item) => item.length > 0),
         };
       });
     });
@@ -781,7 +1084,7 @@ function AdminDialog({ open, onOpenChange, lives, highlights, onReplaceLives, on
           <form className="grid gap-4" onSubmit={handleLoginSubmit}>
             <DialogHeader className="text-left">
               <DialogTitle className="text-2xl text-slate-950">Admin Login</DialogTitle>
-              <DialogDescription>输入管理员账号后即可编辑 Lives 和 Work 内容。</DialogDescription>
+              <DialogDescription>输入管理员账号后即可编辑 Profile、Journey、Lives 和 Projects 内容。</DialogDescription>
             </DialogHeader>
 
             <div className="grid gap-3">
@@ -834,6 +1137,24 @@ function AdminDialog({ open, onOpenChange, lives, highlights, onReplaceLives, on
             <div className="inline-flex w-fit rounded-full border border-zinc-300 bg-zinc-100 p-1">
               <button
                 type="button"
+                onClick={() => setAdminTab("profile")}
+                className={`rounded-full px-4 py-2 text-sm transition-colors ${
+                  adminTab === "profile" ? "bg-slate-950 text-white" : "text-slate-700 hover:bg-white"
+                }`}
+              >
+                Profile
+              </button>
+              <button
+                type="button"
+                onClick={() => setAdminTab("now")}
+                className={`rounded-full px-4 py-2 text-sm transition-colors ${
+                  adminTab === "now" ? "bg-slate-950 text-white" : "text-slate-700 hover:bg-white"
+                }`}
+              >
+                Now
+              </button>
+              <button
+                type="button"
                 onClick={() => setAdminTab("lives")}
                 className={`rounded-full px-4 py-2 text-sm transition-colors ${
                   adminTab === "lives" ? "bg-slate-950 text-white" : "text-slate-700 hover:bg-white"
@@ -861,12 +1182,190 @@ function AdminDialog({ open, onOpenChange, lives, highlights, onReplaceLives, on
 
             {adminError ? <p className="text-sm text-rose-500">{adminError}</p> : null}
 
-            {adminTab === "lives" ? (
+            {adminTab === "profile" ? (
+              <div className="grid gap-4">
+                <div className="grid gap-4 rounded-[1.5rem] border border-zinc-300 bg-zinc-50/70 p-4">
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <input
+                      value={draftProfile.name}
+                      onChange={(event) => updateDraftProfileField("name", event.target.value)}
+                      placeholder="姓名"
+                      className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900"
+                    />
+                    <input
+                      value={draftProfile.location}
+                      onChange={(event) => updateDraftProfileField("location", event.target.value)}
+                      placeholder="地点"
+                      className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900"
+                    />
+                    <input
+                      value={draftProfile.headline}
+                      onChange={(event) => updateDraftProfileField("headline", event.target.value)}
+                      placeholder="一句话标题"
+                      className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900 md:col-span-2"
+                    />
+                    <input
+                      value={draftProfile.avatarUrl}
+                      onChange={(event) => updateDraftProfileField("avatarUrl", event.target.value)}
+                      placeholder="头像 URL"
+                      className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900 md:col-span-2"
+                    />
+                    <input
+                      value={draftProfile.socials.github}
+                      onChange={(event) => updateDraftProfileSocial("github", event.target.value)}
+                      placeholder="GitHub"
+                      className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900"
+                    />
+                    <input
+                      value={draftProfile.socials.blog}
+                      onChange={(event) => updateDraftProfileSocial("blog", event.target.value)}
+                      placeholder="Blog"
+                      className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900"
+                    />
+                    <input
+                      value={draftProfile.socials.email}
+                      onChange={(event) => updateDraftProfileSocial("email", event.target.value)}
+                      placeholder="Email"
+                      className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900 md:col-span-2"
+                    />
+                    <input
+                      value={draftProfile.tags.join(", ")}
+                      onChange={(event) => updateDraftProfileTags(event.target.value)}
+                      placeholder="标签，用逗号分隔"
+                      className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900 md:col-span-2"
+                    />
+                    <textarea
+                      value={draftProfile.shortBio}
+                      onChange={(event) => updateDraftProfileField("shortBio", event.target.value)}
+                      placeholder="简介"
+                      rows={5}
+                      className="rounded-[1.5rem] border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900 md:col-span-2"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => void handleSaveProfile()}
+                  disabled={isSaving || !editingEnabled}
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-slate-950 px-5 py-3 text-sm text-white transition-colors hover:bg-black disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isSaving ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
+                  保存 Profile
+                </button>
+              </div>
+            ) : adminTab === "now" ? (
+              <div className="grid gap-4">
+                <div className="grid gap-4 rounded-[1.5rem] border border-zinc-300 bg-zinc-50/70 p-4">
+                  <textarea
+                    value={draftNow.summary}
+                    onChange={(event) => updateDraftNowField("summary", event.target.value)}
+                    placeholder="成长经历概述"
+                    rows={4}
+                    className="rounded-[1.5rem] border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900"
+                  />
+
+                  <div className="flex justify-between">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setDraftNow((currentNow) => ({
+                          ...currentNow,
+                          items: [
+                            ...currentNow.items,
+                            {
+                              ...createEmptyJourneyItem(),
+                              sortOrder: currentNow.items.length,
+                            },
+                          ],
+                        }))
+                      }
+                      className="inline-flex items-center gap-2 rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm text-slate-800 transition-colors hover:bg-zinc-100"
+                    >
+                      <Plus className="h-4 w-4" />
+                      新增成长经历
+                    </button>
+                  </div>
+
+                  <div className="grid max-h-[48vh] gap-4 overflow-y-auto pr-1">
+                    {draftNow.items.map((item, index) => (
+                      <section key={`${item.id}-${index}`} className="rounded-[1.5rem] border border-zinc-300 bg-white p-4">
+                        <div className="mb-3 flex items-center justify-between">
+                          <p className="text-sm uppercase tracking-[0.24em] text-slate-500">Journey #{index + 1}</p>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setDraftNow((currentNow) => ({
+                                ...currentNow,
+                                items: currentNow.items.filter((_, currentIndex) => currentIndex !== index),
+                              }))
+                            }
+                            className="inline-flex items-center gap-1 rounded-full border border-zinc-300 bg-white px-3 py-1.5 text-sm text-rose-500 transition-colors hover:bg-rose-50"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            删除
+                          </button>
+                        </div>
+
+                        <div className="grid gap-3 md:grid-cols-2">
+                          <select
+                            value={item.type}
+                            onChange={(event) => updateDraftJourneyItem(index, "type", event.target.value)}
+                            className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900"
+                          >
+                            <option value="education">education</option>
+                            <option value="work">work</option>
+                          </select>
+                          <select
+                            value={item.status}
+                            onChange={(event) => updateDraftJourneyStatus(index, event.target.value as ContentStatus)}
+                            className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900"
+                          >
+                            <option value="published">published</option>
+                            <option value="draft">draft</option>
+                            <option value="hidden">hidden</option>
+                          </select>
+                          <input
+                            value={String(item.sortOrder)}
+                            onChange={(event) => updateDraftJourneySortOrder(index, Number(event.target.value) || 0)}
+                            placeholder="排序"
+                            className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900"
+                          />
+                          <input value={item.period} onChange={(event) => updateDraftJourneyItem(index, "period", event.target.value)} placeholder="时间范围" className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900" />
+                          <input value={item.title} onChange={(event) => updateDraftJourneyItem(index, "title", event.target.value)} placeholder="标题" className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900" />
+                          <input value={item.organization} onChange={(event) => updateDraftJourneyItem(index, "organization", event.target.value)} placeholder="学校 / 公司" className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900" />
+                          <input value={item.location} onChange={(event) => updateDraftJourneyItem(index, "location", event.target.value)} placeholder="地点" className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900 md:col-span-2" />
+                          <textarea value={item.description} onChange={(event) => updateDraftJourneyItem(index, "description", event.target.value)} placeholder="描述" rows={4} className="rounded-[1.5rem] border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900 md:col-span-2" />
+                        </div>
+                      </section>
+                    ))}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => void handleSaveNow()}
+                  disabled={isSaving || !editingEnabled}
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-slate-950 px-5 py-3 text-sm text-white transition-colors hover:bg-black disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isSaving ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
+                  保存 Now
+                </button>
+              </div>
+            ) : adminTab === "lives" ? (
               <div className="grid gap-4">
                 <div className="flex justify-between">
                   <button
                     type="button"
-                    onClick={() => setDraftLives((currentLives) => [...currentLives, createEmptyLifeMoment()])}
+                    onClick={() =>
+                      setDraftLives((currentLives) => [
+                        ...currentLives,
+                        {
+                          ...createEmptyLifeMoment(),
+                          sortOrder: currentLives.length,
+                        },
+                      ])
+                    }
                     className="inline-flex items-center gap-2 rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm text-slate-800 transition-colors hover:bg-zinc-100"
                   >
                     <Plus className="h-4 w-4" />
@@ -892,6 +1391,16 @@ function AdminDialog({ open, onOpenChange, lives, highlights, onReplaceLives, on
                       <div className="grid gap-3 md:grid-cols-2">
                         <input value={life.title} onChange={(event) => updateDraftLife(index, "title", event.target.value)} placeholder="标题" className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900" />
                         <input value={life.location} onChange={(event) => updateDraftLife(index, "location", event.target.value)} placeholder="地点" className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900" />
+                        <select
+                          value={life.status}
+                          onChange={(event) => updateDraftLifeStatus(index, event.target.value as ContentStatus)}
+                          className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900"
+                        >
+                          <option value="published">published</option>
+                          <option value="draft">draft</option>
+                          <option value="hidden">hidden</option>
+                        </select>
+                        <input value={String(life.sortOrder)} onChange={(event) => updateDraftLifeSortOrder(index, Number(event.target.value) || 0)} placeholder="排序" className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900" />
                         <input value={life.imageUrl} onChange={(event) => updateDraftLife(index, "imageUrl", event.target.value)} placeholder="图片地址" className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900 md:col-span-2" />
                         <input value={life.alt} onChange={(event) => updateDraftLife(index, "alt", event.target.value)} placeholder="图片 alt 文案" className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900 md:col-span-2" />
                         <input value={life.capturedAt} onChange={(event) => updateDraftLife(index, "capturedAt", event.target.value)} placeholder="拍摄日期 YYYY-MM-DD" className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900" />
@@ -920,7 +1429,15 @@ function AdminDialog({ open, onOpenChange, lives, highlights, onReplaceLives, on
                 <div className="flex justify-between">
                   <button
                     type="button"
-                    onClick={() => setDraftHighlights((currentHighlights) => [...currentHighlights, createEmptyHighlightItem()])}
+                    onClick={() =>
+                      setDraftHighlights((currentHighlights) => [
+                        ...currentHighlights,
+                        {
+                          ...createEmptyHighlightItem(),
+                          sortOrder: currentHighlights.length,
+                        },
+                      ])
+                    }
                     className="inline-flex items-center gap-2 rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm text-slate-800 transition-colors hover:bg-zinc-100"
                   >
                     <Plus className="h-4 w-4" />
@@ -930,7 +1447,7 @@ function AdminDialog({ open, onOpenChange, lives, highlights, onReplaceLives, on
 
                 <div className="grid max-h-[55vh] gap-4 overflow-y-auto pr-1">
                   {draftHighlights.map((highlight, index) => (
-                    <section key={`${highlight.title}-${index}`} className="rounded-[1.5rem] border border-zinc-300 bg-zinc-50/70 p-4">
+                    <section key={`${highlight.id}-${index}`} className="rounded-[1.5rem] border border-zinc-300 bg-zinc-50/70 p-4">
                       <div className="mb-3 flex items-center justify-between">
                         <p className="text-sm uppercase tracking-[0.24em] text-slate-500">Work #{index + 1}</p>
                         <button
@@ -945,12 +1462,22 @@ function AdminDialog({ open, onOpenChange, lives, highlights, onReplaceLives, on
 
                       <div className="grid gap-3">
                         <input value={highlight.title} onChange={(event) => updateDraftHighlight(index, "title", event.target.value)} placeholder="标题" className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900" />
+                        <input value={highlight.period} onChange={(event) => updateDraftHighlight(index, "period", event.target.value)} placeholder="项目时间" className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900" />
                         <select value={highlight.kind} onChange={(event) => updateDraftHighlight(index, "kind", event.target.value)} className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900">
                           <option value="project">project</option>
                           <option value="approach">approach</option>
                           <option value="skill">skill</option>
                         </select>
-                        <textarea value={highlight.description} onChange={(event) => updateDraftHighlight(index, "description", event.target.value)} placeholder="描述" rows={4} className="rounded-[1.5rem] border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900" />
+                        <select value={highlight.status} onChange={(event) => updateDraftHighlightStatus(index, event.target.value as ContentStatus)} className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900">
+                          <option value="published">published</option>
+                          <option value="draft">draft</option>
+                          <option value="hidden">hidden</option>
+                        </select>
+                        <input value={String(highlight.sortOrder)} onChange={(event) => updateDraftHighlightSortOrder(index, Number(event.target.value) || 0)} placeholder="排序" className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900" />
+                        <input value={highlight.link ?? ""} onChange={(event) => updateDraftHighlight(index, "link", event.target.value)} placeholder="项目链接（可选）" className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900" />
+                        <input value={highlight.stack.join(", ")} onChange={(event) => updateDraftHighlightStack(index, event.target.value)} placeholder="技术栈，用逗号分隔" className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900" />
+                        <textarea value={highlight.summary} onChange={(event) => updateDraftHighlight(index, "summary", event.target.value)} placeholder="卡片摘要" rows={3} className="rounded-[1.5rem] border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900" />
+                        <textarea value={highlight.description} onChange={(event) => updateDraftHighlight(index, "description", event.target.value)} placeholder="详情描述" rows={5} className="rounded-[1.5rem] border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900" />
                       </div>
                     </section>
                   ))}
@@ -1061,7 +1588,7 @@ function ActiveSectionPanel({
     case "about":
       return <ProfileCard profile={profile} sectionId="about" />;
     case "now":
-      return <NowSection profile={profile} now={now} sectionId="now" />;
+      return <NowSection now={now} sectionId="now" />;
     case "highlights":
       return <HighlightsSection highlights={highlights} sectionId="highlights" />;
     case "lives":
@@ -1081,7 +1608,6 @@ function ActiveSectionPanel({
 }
 
 function ReadyState({ data }: { data: PublicContent }) {
-  const { profile, now } = data;
   const [activeSection, setActiveSection] = useState<NavigationSectionId>(() => {
     if (typeof window === "undefined") {
       return "about";
@@ -1097,6 +1623,8 @@ function ReadyState({ data }: { data: PublicContent }) {
     return isAdminHash(window.location.hash);
   });
   const [panelDirection, setPanelDirection] = useState<PanelDirection>("forward");
+  const [profile, setProfile] = useState(data.profile);
+  const [now, setNow] = useState(data.now);
   const [lives, setLives] = useState(data.lives);
   const [livesPageInfo, setLivesPageInfo] = useState(data.livesPageInfo);
   const [highlights, setHighlights] = useState(data.highlights);
@@ -1240,13 +1768,18 @@ function ReadyState({ data }: { data: PublicContent }) {
   }
 
   function handleReplaceLives(items: LifeMoment[]) {
+    const visibleLives = items.filter((item) => item.status === "published");
+
     setLives((currentLives) => {
-      const nextVisibleCount = Math.min(items.length, Math.max(currentLives.length, Math.min(4, items.length)));
-      const nextLives = items.slice(0, nextVisibleCount);
+      const nextVisibleCount = Math.min(
+        visibleLives.length,
+        Math.max(currentLives.length, Math.min(4, visibleLives.length)),
+      );
+      const nextLives = visibleLives.slice(0, nextVisibleCount);
 
       setLivesPageInfo({
-        nextCursor: nextVisibleCount < items.length && nextLives.length > 0 ? nextLives[nextLives.length - 1].id : null,
-        hasMore: nextVisibleCount < items.length,
+        nextCursor: nextVisibleCount < visibleLives.length && nextLives.length > 0 ? nextLives[nextLives.length - 1].id : null,
+        hasMore: nextVisibleCount < visibleLives.length,
       });
 
       return nextLives;
@@ -1254,8 +1787,19 @@ function ReadyState({ data }: { data: PublicContent }) {
     setLoadMoreLivesError(null);
   }
 
+  function handleReplaceProfile(content: Profile) {
+    setProfile(content);
+  }
+
+  function handleReplaceNow(content: Now) {
+    setNow({
+      ...content,
+      items: content.items.filter((item) => item.status === "published"),
+    });
+  }
+
   function handleReplaceHighlights(items: HighlightItem[]) {
-    setHighlights(items);
+    setHighlights(items.filter((item) => item.status === "published"));
   }
 
   return (
@@ -1272,7 +1816,7 @@ function ReadyState({ data }: { data: PublicContent }) {
             <FloatingSectionNav activeSection={activeSection} onSelect={handleSelectSection} />
             <div className="flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-slate-500">
               <Moon className="h-4 w-4 text-slate-900" />
-              monochrome
+              just do it
             </div>
           </div>
 
@@ -1330,8 +1874,12 @@ function ReadyState({ data }: { data: PublicContent }) {
       <AdminDialog
         open={isAdminOpen}
         onOpenChange={handleAdminOpenChange}
+        profile={profile}
+        now={now}
         lives={lives}
         highlights={highlights}
+        onReplaceProfile={handleReplaceProfile}
+        onReplaceNow={handleReplaceNow}
         onReplaceLives={handleReplaceLives}
         onReplaceHighlights={handleReplaceHighlights}
       />

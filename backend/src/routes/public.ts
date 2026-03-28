@@ -1,7 +1,6 @@
 import { Hono } from "hono";
 
-import { now, profile } from "../data/public-content";
-import { getHighlightsContent, getLivesContent } from "../data/public-content-store";
+import { getHighlightsContent, getLivesContent, getNowContent, getProfileContent } from "../data/public-content-store";
 
 const publicRouter = new Hono();
 const DEFAULT_LIVES_LIMIT = 4;
@@ -21,11 +20,15 @@ function parseLivesLimit(value: string | undefined) {
   return Math.min(parsedValue, MAX_LIVES_LIMIT);
 }
 
-publicRouter.get("/profile", (c) => {
+publicRouter.get("/profile", async (c) => {
+  const profile = await getProfileContent();
+
   return c.json(profile);
 });
 
-publicRouter.get("/now", (c) => {
+publicRouter.get("/now", async (c) => {
+  const now = await getNowContent();
+
   return c.json(now);
 });
 

@@ -178,6 +178,26 @@ export async function fetchAdminContent(username: string, password: string): Pro
   );
 }
 
+export async function saveAdminProfile(username: string, password: string, content: Profile) {
+  return fetchAdminJson<Profile>("/admin/profile", isProfile, username, password, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(content),
+  });
+}
+
+export async function saveAdminNow(username: string, password: string, content: Now) {
+  return fetchAdminJson<Now>("/admin/now", isNow, username, password, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(content),
+  });
+}
+
 export async function saveAdminLives(
   username: string,
   password: string,

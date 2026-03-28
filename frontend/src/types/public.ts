@@ -1,6 +1,10 @@
 export const highlightKinds = ["project", "approach", "skill"] as const satisfies readonly string[];
+export const journeyItemKinds = ["education", "work"] as const satisfies readonly string[];
+export const contentStatuses = ["draft", "published", "hidden"] as const satisfies readonly string[];
 
 export type HighlightKind = (typeof highlightKinds)[number];
+export type JourneyItemKind = (typeof journeyItemKinds)[number];
+export type ContentStatus = (typeof contentStatuses)[number];
 
 export interface ProfileSocials {
   github: string;
@@ -13,17 +17,26 @@ export interface Profile {
   headline: string;
   avatarUrl: string;
   location: string;
-  languages: string[];
   shortBio: string;
   tags: string[];
   socials: ProfileSocials;
 }
 
+export interface JourneyItem {
+  id: string;
+  type: JourneyItemKind;
+  title: string;
+  organization: string;
+  location: string;
+  period: string;
+  description: string;
+  status: ContentStatus;
+  sortOrder: number;
+}
+
 export interface Now {
-  focus: string;
-  learning: string[];
-  shipping: string[];
-  availability: string;
+  summary: string;
+  items: JourneyItem[];
   updatedAt: string;
 }
 
@@ -37,12 +50,21 @@ export interface LifeMoment {
   description: string;
   width: number;
   height: number;
+  status: ContentStatus;
+  sortOrder: number;
 }
 
 export interface HighlightItem {
+  id: string;
   title: string;
+  summary: string;
   description: string;
   kind: HighlightKind;
+  period: string;
+  stack: string[];
+  link?: string;
+  status: ContentStatus;
+  sortOrder: number;
 }
 
 export interface LivesPageInfo {
@@ -60,6 +82,8 @@ export interface HighlightsResponse {
 }
 
 export interface AdminContentResponse {
+  profile: Profile;
+  now: Now;
   lives: LifeMoment[];
   highlights: HighlightItem[];
   editingEnabled: boolean;
@@ -96,6 +120,8 @@ function createLiteralUnionGuard<const TValues extends readonly string[]>(values
 }
 
 const isHighlightKind = createLiteralUnionGuard(highlightKinds);
+const isJourneyItemKind = createLiteralUnionGuard(journeyItemKinds);
+const isContentStatus = createLiteralUnionGuard(contentStatuses);
 
 function isProfileSocials(value: unknown): value is ProfileSocials {
   if (!isRecord(value)) {
@@ -109,6 +135,24 @@ function isProfileSocials(value: unknown): value is ProfileSocials {
   );
 }
 
+function isJourneyItem(value: unknown): value is JourneyItem {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  return (
+    typeof value.id === "string" &&
+    isJourneyItemKind(value.type) &&
+    typeof value.title === "string" &&
+    typeof value.organization === "string" &&
+    typeof value.location === "string" &&
+    typeof value.period === "string" &&
+    typeof value.description === "string" &&
+    isContentStatus(value.status) &&
+    isFiniteNumber(value.sortOrder)
+  );
+}
+
 export function isProfile(value: unknown): value is Profile {
   if (!isRecord(value)) {
     return false;
@@ -119,7 +163,6 @@ export function isProfile(value: unknown): value is Profile {
     typeof value.headline === "string" &&
     typeof value.avatarUrl === "string" &&
     typeof value.location === "string" &&
-    isStringArray(value.languages) &&
     typeof value.shortBio === "string" &&
     isStringArray(value.tags) &&
     isProfileSocials(value.socials)
@@ -132,10 +175,9 @@ export function isNow(value: unknown): value is Now {
   }
 
   return (
-    typeof value.focus === "string" &&
-    isStringArray(value.learning) &&
-    isStringArray(value.shipping) &&
-    typeof value.availability === "string" &&
+    typeof value.summary === "string" &&
+    Array.isArray(value.items) &&
+    value.items.every((item) => isJourneyItem(item)) &&
     typeof value.updatedAt === "string"
   );
 }
@@ -154,7 +196,9 @@ function isLifeMoment(value: unknown): value is LifeMoment {
     typeof value.capturedAt === "string" &&
     typeof value.description === "string" &&
     isFiniteNumber(value.width) &&
-    isFiniteNumber(value.height)
+    isFiniteNumber(value.height) &&
+    isContentStatus(value.status) &&
+    isFiniteNumber(value.sortOrder)
   );
 }
 
@@ -164,9 +208,16 @@ function isHighlightItem(value: unknown): value is HighlightItem {
   }
 
   return (
+    typeof value.id === "string" &&
     typeof value.title === "string" &&
+    typeof value.summary === "string" &&
     typeof value.description === "string" &&
-    isHighlightKind(value.kind)
+    isHighlightKind(value.kind) &&
+    typeof value.period === "string" &&
+    isStringArray(value.stack) &&
+    (value.link === undefined || typeof value.link === "string") &&
+    isContentStatus(value.status) &&
+    isFiniteNumber(value.sortOrder)
   );
 }
 
@@ -206,6 +257,8 @@ export function isAdminContentResponse(value: unknown): value is AdminContentRes
   }
 
   return (
+    isProfile(value.profile) &&
+    isNow(value.now) &&
     Array.isArray(value.lives) &&
     value.lives.every((item) => isLifeMoment(item)) &&
     Array.isArray(value.highlights) &&

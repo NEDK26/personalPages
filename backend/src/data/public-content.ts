@@ -3,7 +3,6 @@ export const profile = {
   headline: "Java 后端工程师｜软件工程硕士｜关注 AI 应用与业务智能化落地",
   avatarUrl: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=600&q=80",
   location: "中国·杭州",
-  languages: ["中文", "English"],
   shortBio:
     "毕业于浙江工业大学软件工程硕士，目前从事 Java 后端开发。硕士期间参与过金融时间序列相关项目，工作中主要围绕基于 Dify 平台的文档核实流程建设与落地，关注后端工程能力、AI 工作流和业务效率优化。",
   tags: ["Java", "Spring Boot", "MySQL", "Redis", "Dify", "AI Workflow"],
@@ -15,10 +14,28 @@ export const profile = {
 };
 
 export const now = {
-  focus: "目前专注于 Java 后端开发，以及基于 Dify 的文档核实与业务流程智能化实践。",
-  learning: ["AI 工作流设计", "大模型应用集成", "高可用后端架构"],
-  shipping: ["文档核实流程优化", "业务自动化能力建设", "个人技术主页"],
-  availability: "最近把主要精力放在工作中的智能流程实践和个人项目迭代上。",
+  summary:
+    "从软件工程硕士到 Java 后端工程师，我更关注把研究能力、工程能力和 AI 工作流实践真正结合到业务落地里。",
+  items: [
+    {
+      id: "zjut-master",
+      type: "education",
+      title: "软件工程硕士",
+      organization: "浙江工业大学",
+      location: "杭州",
+      period: "2021 - 2024",
+      description: "研究生阶段主要参与金融时间序列相关项目，围绕时序数据分析、建模与应用展开实践，也系统训练了我对复杂问题拆解和验证的能力。",
+    },
+    {
+      id: "java-backend-engineer",
+      type: "work",
+      title: "Java 后端工程师",
+      organization: "当前工作",
+      location: "杭州",
+      period: "2024 - 至今",
+      description: "主要负责 Java 后端开发工作，参与基于 Dify 平台的文档核实流程建设，把模型能力、业务规则和流程系统整合成可落地的后端方案。",
+    },
+  ],
   updatedAt: "2026-03-28",
 };
 
@@ -99,18 +116,36 @@ export const lives = [
 
 export const highlights = [
   {
+    id: "financial-time-series",
     title: "金融时间序列研究项目",
-    description: "硕士期间参与金融时间序列相关项目，围绕时序数据分析与建模展开实践。",
+    summary: "硕士阶段围绕金融时间序列分析与建模开展研究与实践。",
+    description:
+      "在研究生阶段参与金融时间序列相关项目，重点放在时序数据处理、建模和结果分析上。这个阶段让我建立了从问题定义、数据观察、实验验证到结果复盘的一整套研究方法。",
     kind: "project",
+    period: "2022 - 2024",
+    stack: ["Python", "Time Series", "Data Analysis"],
+    link: "",
   },
   {
+    id: "dify-document-review",
     title: "基于 Dify 的文档核实流程",
-    description: "在工作中参与基于 Dify 平台的文档核实方案建设，推动文档处理流程更加高效与智能。",
+    summary: "把模型能力、业务规则与流程系统结合成可落地的后端方案。",
+    description:
+      "在工作中参与基于 Dify 平台的文档核实方案建设，围绕文档解析、规则校验、流程编排和结果回传做后端支撑，目标是把原本依赖人工判断的步骤沉淀为可复用的智能流程。",
     kind: "project",
+    period: "2024 - 至今",
+    stack: ["Java", "Dify", "Workflow", "Backend"],
+    link: "",
   },
   {
+    id: "java-backend-practice",
     title: "Java 后端工程实践",
-    description: "持续积累 Java 后端开发经验，关注接口设计、系统稳定性与业务落地效率。",
-    kind: "skill",
+    summary: "持续积累接口设计、系统稳定性和业务落地方面的后端经验。",
+    description:
+      "围绕 Java 后端开发，我持续在接口设计、服务拆分、流程整合和稳定性上做工程积累，也在业务场景里尝试把 AI 能力与后端系统结合起来，做更可维护的生产方案。",
+    kind: "project",
+    period: "持续进行中",
+    stack: ["Java", "Spring Boot", "MySQL", "Redis"],
+    link: "",
   },
 ];
