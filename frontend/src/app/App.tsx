@@ -21,12 +21,13 @@ import {
   RefreshCw,
   Sparkles,
   Trash2,
+  Upload,
   UserRound,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import Masonry, { ResponsiveMasonry } from "react-responsive-masonry";
 import { useEffect, useRef, useState } from "react";
-import type { FormEvent, ReactNode, TouchEvent } from "react";
+import type { ChangeEvent, FormEvent, ReactNode, TouchEvent } from "react";
 
 import avatarImage from "../assets/avatar.jpg";
 import {
@@ -46,6 +47,7 @@ import {
   saveAdminLives,
   saveAdminNow,
   saveAdminProfile,
+  uploadAdminLifeImage,
 } from "../lib/api";
 import type {
   ContentStatus,
@@ -191,6 +193,31 @@ function formatDate(
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "资料加载失败，请稍后重试。";
+}
+
+async function readImageDimensions(file: File) {
+  const objectUrl = URL.createObjectURL(file);
+
+  try {
+    return await new Promise<{ width: number; height: number }>((resolve, reject) => {
+      const image = new Image();
+
+      image.onload = () => {
+        resolve({
+          width: image.naturalWidth,
+          height: image.naturalHeight,
+        });
+      };
+
+      image.onerror = () => {
+        reject(new Error("图片尺寸读取失败"));
+      };
+
+      image.src = objectUrl;
+    });
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
 }
 
 function opensNewTab(url: string) {
@@ -725,8 +752,10 @@ function AdminDialog({
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [isLoadingContent, setIsLoadingContent] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [uploadingLifeId, setUploadingLifeId] = useState<string | null>(null);
   const [adminError, setAdminError] = useState<string | null>(null);
   const [editingEnabled, setEditingEnabled] = useState(true);
+  const lifeImageInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   useEffect(() => {
     if (open) {
@@ -952,6 +981,8 @@ function AdminDialog({
     JSON.stringify(draftNow) !== JSON.stringify(savedNowState) ||
     JSON.stringify(draftLives) !== JSON.stringify(savedLivesState) ||
     JSON.stringify(draftHighlights) !== JSON.stringify(savedHighlightsState);
+  const isUploadingLifeImage = uploadingLifeId !== null;
+  const isAdminBusy = isSaving || isUploadingLifeImage;
 
   function handleDialogOpenChange(nextOpen: boolean) {
     if (!nextOpen && hasPendingChanges && typeof window !== "undefined") {
@@ -1026,6 +1057,44 @@ function AdminDialog({
         };
       });
     });
+  }
+
+  async function handleLifeImageSelect(lifeId: string, event: ChangeEvent<HTMLInputElement>) {
+    const nextFile = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!nextFile || !credentials) {
+      return;
+    }
+
+    setUploadingLifeId(lifeId);
+    setAdminError(null);
+
+    try {
+      const [dimensions, uploadedImage] = await Promise.all([
+        readImageDimensions(nextFile),
+        uploadAdminLifeImage(credentials.username, credentials.password, nextFile),
+      ]);
+
+      setDraftLives((currentLives) =>
+        currentLives.map((life) => {
+          if (life.id !== lifeId) {
+            return life;
+          }
+
+          return {
+            ...life,
+            imageUrl: uploadedImage.url,
+            width: dimensions.width,
+            height: dimensions.height,
+          };
+        }),
+      );
+    } catch (error) {
+      setAdminError(getErrorMessage(error));
+    } finally {
+      setUploadingLifeId(null);
+    }
   }
 
   function moveDraftLife(index: number, direction: "up" | "down") {
@@ -1244,10 +1313,10 @@ function AdminDialog({
               <button
                 type="button"
                 onClick={() => void handleSaveAll()}
-                disabled={isSaving || !editingEnabled || !hasPendingChanges}
+                disabled={isAdminBusy || !editingEnabled || !hasPendingChanges}
                 className="inline-flex items-center justify-center gap-2 rounded-full bg-slate-950 px-5 py-3 text-sm text-white transition-colors hover:bg-black disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isSaving ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
+                {isAdminBusy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
                 保存全部
               </button>
               {hasPendingChanges ? <span className="text-sm text-amber-600">有未保存修改</span> : null}
@@ -1366,10 +1435,10 @@ function AdminDialog({
                 <button
                   type="button"
                   onClick={() => void handleSaveProfile()}
-                  disabled={isSaving || !editingEnabled}
+                  disabled={isAdminBusy || !editingEnabled}
                   className="inline-flex items-center justify-center gap-2 rounded-full bg-slate-950 px-5 py-3 text-sm text-white transition-colors hover:bg-black disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {isSaving ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
+                  {isAdminBusy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
                   保存 Profile
                 </button>
               </div>
@@ -1483,10 +1552,10 @@ function AdminDialog({
                 <button
                   type="button"
                   onClick={() => void handleSaveNow()}
-                  disabled={isSaving || !editingEnabled}
+                  disabled={isAdminBusy || !editingEnabled}
                   className="inline-flex items-center justify-center gap-2 rounded-full bg-slate-950 px-5 py-3 text-sm text-white transition-colors hover:bg-black disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {isSaving ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
+                  {isAdminBusy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
                   保存 Now
                 </button>
               </div>
@@ -1506,7 +1575,8 @@ function AdminDialog({
                         ]),
                       )
                     }
-                    className="inline-flex items-center gap-2 rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm text-slate-800 transition-colors hover:bg-zinc-100"
+                    disabled={isUploadingLifeImage}
+                    className="inline-flex items-center gap-2 rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm text-slate-800 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <Plus className="h-4 w-4" />
                     新增照片
@@ -1525,7 +1595,7 @@ function AdminDialog({
                             <button
                               type="button"
                               onClick={() => moveDraftLife(index, "up")}
-                              disabled={index === 0}
+                              disabled={index === 0 || isUploadingLifeImage}
                               className="inline-flex items-center justify-center rounded-full border border-zinc-300 bg-white p-2 text-slate-700 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40"
                             >
                               <ArrowUp className="h-4 w-4" />
@@ -1533,7 +1603,7 @@ function AdminDialog({
                             <button
                               type="button"
                               onClick={() => moveDraftLife(index, "down")}
-                              disabled={index === draftLives.length - 1}
+                              disabled={index === draftLives.length - 1 || isUploadingLifeImage}
                               className="inline-flex items-center justify-center rounded-full border border-zinc-300 bg-white p-2 text-slate-700 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40"
                             >
                               <ArrowDown className="h-4 w-4" />
@@ -1545,6 +1615,7 @@ function AdminDialog({
                                   normalizeSortOrder(currentLives.filter((_, currentIndex) => currentIndex !== index)),
                                 )
                               }
+                              disabled={isUploadingLifeImage}
                               className="inline-flex items-center gap-1 rounded-full border border-zinc-300 bg-white px-3 py-1.5 text-sm text-rose-500 transition-colors hover:bg-rose-50"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -1567,7 +1638,28 @@ function AdminDialog({
                             </option>
                           ))}
                         </select>
-                        <input value={life.imageUrl} onChange={(event) => updateDraftLife(index, "imageUrl", event.target.value)} placeholder="图片地址" className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900 md:col-span-2" />
+                        <div className="md:col-span-2 flex flex-wrap items-center gap-3">
+                          <input
+                            ref={(node) => {
+                              lifeImageInputRefs.current[life.id] = node;
+                            }}
+                            type="file"
+                            accept="image/*"
+                            onChange={(event) => void handleLifeImageSelect(life.id, event)}
+                            className="hidden"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => lifeImageInputRefs.current[life.id]?.click()}
+                            disabled={!editingEnabled || isAdminBusy}
+                            className="inline-flex items-center gap-2 rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm text-slate-800 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {uploadingLifeId === life.id ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                            {uploadingLifeId === life.id ? "上传中..." : "上传"}
+                          </button>
+                          <span className="text-xs text-slate-500">上传后会自动回填图片地址和尺寸</span>
+                        </div>
+                        <input value={life.imageUrl} onChange={(event) => updateDraftLife(index, "imageUrl", event.target.value)} placeholder="图片地址或 /lives/xxx.jpg" className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900 md:col-span-2" />
                         <input value={life.alt} onChange={(event) => updateDraftLife(index, "alt", event.target.value)} placeholder="图片 alt 文案" className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900 md:col-span-2" />
                         <input value={life.capturedAt} onChange={(event) => updateDraftLife(index, "capturedAt", event.target.value)} placeholder="拍摄日期 YYYY-MM-DD" className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900" />
                         <div className="grid grid-cols-2 gap-3">
@@ -1583,10 +1675,10 @@ function AdminDialog({
                 <button
                   type="button"
                   onClick={() => void handleSaveLives()}
-                  disabled={isSaving || !editingEnabled}
+                  disabled={isAdminBusy || !editingEnabled}
                   className="inline-flex items-center justify-center gap-2 rounded-full bg-slate-950 px-5 py-3 text-sm text-white transition-colors hover:bg-black disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {isSaving ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
+                  {isAdminBusy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
                   保存 Lives
                 </button>
               </div>
@@ -1682,10 +1774,10 @@ function AdminDialog({
                 <button
                   type="button"
                   onClick={() => void handleSaveHighlights()}
-                  disabled={isSaving || !editingEnabled}
+                  disabled={isAdminBusy || !editingEnabled}
                   className="inline-flex items-center justify-center gap-2 rounded-full bg-slate-950 px-5 py-3 text-sm text-white transition-colors hover:bg-black disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {isSaving ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
+                  {isAdminBusy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
                   保存 Work
                 </button>
               </div>

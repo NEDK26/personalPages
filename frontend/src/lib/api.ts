@@ -1,5 +1,6 @@
 import {
   isAdminContentResponse,
+  isAdminLifeImageUploadResponse,
   isHighlightsResponse,
   isLivesResponse,
   isNow,
@@ -7,6 +8,7 @@ import {
 } from "../types/public";
 import type {
   AdminContentResponse,
+  AdminLifeImageUploadResponse,
   HighlightsResponse,
   LivesPageInfo,
   LivesResponse,
@@ -119,6 +121,28 @@ function createBasicAuthHeader(username: string, password: string) {
   const encodedValue = btoa(`${username}:${password}`);
 
   return `Basic ${encodedValue}`;
+}
+
+async function getApiErrorMessage(response: Response, fallbackMessage: string) {
+  try {
+    const payload: unknown = await response.json();
+
+    if (typeof payload !== "object" || payload === null) {
+      return fallbackMessage;
+    }
+
+    if (typeof (payload as { message?: unknown }).message === "string") {
+      return (payload as { message: string }).message;
+    }
+
+    if (typeof (payload as { error?: unknown }).error === "string") {
+      return (payload as { error: string }).error;
+    }
+
+    return fallbackMessage;
+  } catch {
+    return fallbackMessage;
+  }
 }
 
 async function fetchAdminJson<T>(
@@ -265,4 +289,34 @@ export async function saveAdminHighlights(
   );
 
   return response.items;
+}
+
+export async function uploadAdminLifeImage(
+  username: string,
+  password: string,
+  file: File,
+): Promise<AdminLifeImageUploadResponse> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch(buildApiUrl("/admin/lives/upload"), {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      Authorization: createBasicAuthHeader(username, password),
+    },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error(await getApiErrorMessage(response, "图片上传失败"));
+  }
+
+  const payload: unknown = await response.json();
+
+  if (!isAdminLifeImageUploadResponse(payload)) {
+    throw new Error("图片上传响应格式不正确");
+  }
+
+  return payload;
 }

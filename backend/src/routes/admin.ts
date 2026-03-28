@@ -1,3 +1,4 @@
+import { put } from "@vercel/blob";
 import { Hono } from "hono";
 
 import { env } from "../config/env";
@@ -20,6 +21,62 @@ import {
 } from "../data/public-content-store";
 
 const adminRouter = new Hono();
+const MAX_LIFE_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
+
+function createUploadUnavailableResponse() {
+  return new Response(
+    JSON.stringify({
+      error: "Blob upload unavailable",
+      message: "BLOB_READ_WRITE_TOKEN is not configured",
+    }),
+    {
+      status: 503,
+      headers: {
+        "content-type": "application/json",
+      },
+    },
+  );
+}
+
+function sanitizeFileNameSegment(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/\.[a-z0-9]+$/i, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function getImageExtension(fileName: string, contentType: string) {
+  const extensionMatch = /\.([a-z0-9]+)$/i.exec(fileName);
+
+  if (extensionMatch) {
+    return `.${extensionMatch[1].toLowerCase()}`;
+  }
+
+  switch (contentType) {
+    case "image/jpeg":
+      return ".jpg";
+    case "image/png":
+      return ".png";
+    case "image/webp":
+      return ".webp";
+    case "image/gif":
+      return ".gif";
+    case "image/avif":
+      return ".avif";
+    case "image/svg+xml":
+      return ".svg";
+    default:
+      return "";
+  }
+}
+
+function createLifeImagePathname(fileName: string, contentType: string) {
+  const baseName = sanitizeFileNameSegment(fileName) || "life-image";
+  const extension = getImageExtension(fileName, contentType);
+
+  return `lives/${baseName}${extension}`;
+}
 
 function parseBasicAuthHeader(authorizationHeader: string | undefined) {
   if (!authorizationHeader?.startsWith("Basic ")) {
@@ -220,6 +277,87 @@ adminRouter.put("/admin/lives", async (c) => {
       hasMore: false,
     },
   });
+});
+
+adminRouter.post("/admin/lives/upload", async (c) => {
+  if (!isAdminEditingEnabled()) {
+    return createEditingUnavailableResponse();
+  }
+
+  if (!env.BLOB_READ_WRITE_TOKEN) {
+    return createUploadUnavailableResponse();
+  }
+
+  const formData = await c.req.formData();
+  const file = formData.get("file");
+
+  if (!(file instanceof File)) {
+    return c.json(
+      {
+        error: "Invalid upload payload",
+        message: "Expected an image file in the 'file' field",
+      },
+      400,
+    );
+  }
+
+  if (!file.type.startsWith("image/")) {
+    return c.json(
+      {
+        error: "Invalid file type",
+        message: "Only image uploads are supported for Lives",
+      },
+      400,
+    );
+  }
+
+  if (file.size <= 0) {
+    return c.json(
+      {
+        error: "Invalid file size",
+        message: "Uploaded file is empty",
+      },
+      400,
+    );
+  }
+
+  if (file.size > MAX_LIFE_IMAGE_SIZE_BYTES) {
+    return c.json(
+      {
+        error: "File too large",
+        message: "Please upload an image smaller than 10MB",
+      },
+      400,
+    );
+  }
+
+  try {
+    const uploadedBlob = await put(createLifeImagePathname(file.name, file.type), file, {
+      access: "public",
+      addRandomSuffix: true,
+      cacheControlMaxAge: 60 * 60 * 24 * 30,
+      contentType: file.type,
+      token: env.BLOB_READ_WRITE_TOKEN,
+    });
+
+    return c.json({
+      url: uploadedBlob.url,
+      pathname: uploadedBlob.pathname,
+      contentType: uploadedBlob.contentType,
+      size: file.size,
+      uploadedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown upload error";
+
+    return c.json(
+      {
+        error: "Blob upload failed",
+        message,
+      },
+      502,
+    );
+  }
 });
 
 adminRouter.put("/admin/highlights", async (c) => {

@@ -64,10 +64,28 @@ const legacyNowSchema = z.object({
   updatedAt: z.string().trim().min(1),
 });
 
+const imageSourceSchema = z.string().trim().refine(
+  (value) => {
+    if (value.startsWith("/")) {
+      return true;
+    }
+
+    try {
+      new URL(value);
+      return true;
+    } catch {
+      return false;
+    }
+  },
+  {
+    message: "Expected an absolute URL or root-relative path",
+  },
+);
+
 const baseLifeMomentSchema = z.object({
   id: z.string().trim().min(1),
   title: z.string().trim().min(1),
-  imageUrl: z.string().trim().url(),
+  imageUrl: imageSourceSchema,
   alt: z.string().trim().min(1),
   location: z.string().trim().min(1),
   capturedAt: z.string().trim().min(1),

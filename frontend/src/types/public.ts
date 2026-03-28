@@ -89,6 +89,14 @@ export interface AdminContentResponse {
   editingEnabled: boolean;
 }
 
+export interface AdminLifeImageUploadResponse {
+  url: string;
+  pathname: string;
+  contentType: string;
+  size: number;
+  uploadedAt: string;
+}
+
 export interface PublicContent {
   profile: Profile;
   now: Now;
@@ -264,5 +272,19 @@ export function isAdminContentResponse(value: unknown): value is AdminContentRes
     Array.isArray(value.highlights) &&
     value.highlights.every((item) => isHighlightItem(item)) &&
     typeof value.editingEnabled === "boolean"
+  );
+}
+
+export function isAdminLifeImageUploadResponse(value: unknown): value is AdminLifeImageUploadResponse {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  return (
+    typeof value.url === "string" &&
+    typeof value.pathname === "string" &&
+    typeof value.contentType === "string" &&
+    isFiniteNumber(value.size) &&
+    typeof value.uploadedAt === "string"
   );
 }

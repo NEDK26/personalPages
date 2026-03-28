@@ -36,6 +36,7 @@ This file is for coding agents working in `/Users/minda66/Desktop/projects/demo-
 ## Environment Variables
 
 - `PORT`: server port; defaults to `3000` via Zod coercion.
+- `BLOB_READ_WRITE_TOKEN`: optional unless Blob-backed image uploads are required.
 - `TURSO_DATABASE_URL`: optional unless database-backed features are required.
 - `TURSO_AUTH_TOKEN`: optional unless database-backed features are required.
 - `NODE_ENV`: parsed as `development | test | production`; defaults to `development`.

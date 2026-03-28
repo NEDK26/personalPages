@@ -34,6 +34,7 @@ const envSchema = z.object({
   FRONTEND_ORIGINS: z.string().trim().optional(),
   ADMIN_USERNAME: z.string().trim().min(1).default("admin"),
   ADMIN_PASSWORD: z.string().trim().min(1).default("190828xmd"),
+  BLOB_READ_WRITE_TOKEN: z.string().trim().min(1).optional(),
   TURSO_DATABASE_URL: z.string().trim().optional(),
   TURSO_AUTH_TOKEN: z.string().trim().optional(),
 });
@@ -50,8 +51,10 @@ const rawEnv = parsedEnv.data;
 export const env = {
   ...rawEnv,
   FRONTEND_ORIGINS: parseFrontendOrigins(rawEnv.FRONTEND_ORIGINS),
+  BLOB_READ_WRITE_TOKEN: rawEnv.BLOB_READ_WRITE_TOKEN || undefined,
   TURSO_DATABASE_URL: rawEnv.TURSO_DATABASE_URL || undefined,
   TURSO_AUTH_TOKEN: rawEnv.TURSO_AUTH_TOKEN || undefined,
 };
 
 export const isTursoConfigured = Boolean(env.TURSO_DATABASE_URL && env.TURSO_AUTH_TOKEN);
+export const isBlobConfigured = Boolean(env.BLOB_READ_WRITE_TOKEN);
