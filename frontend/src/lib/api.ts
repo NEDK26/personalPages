@@ -1,10 +1,12 @@
 import {
+  isAdminContentResponse,
   isHighlightsResponse,
   isLivesResponse,
   isNow,
   isProfile,
 } from "../types/public";
 import type {
+  AdminContentResponse,
   HighlightsResponse,
   LivesPageInfo,
   LivesResponse,
@@ -111,4 +113,111 @@ export async function fetchMoreLives(
     items: response.items,
     pageInfo: response.pageInfo,
   };
+}
+
+function createBasicAuthHeader(username: string, password: string) {
+  const encodedValue = btoa(`${username}:${password}`);
+
+  return `Basic ${encodedValue}`;
+}
+
+async function fetchAdminJson<T>(
+  path: string,
+  guard: (value: unknown) => value is T,
+  username: string,
+  password: string,
+  init?: RequestInit,
+) {
+  const response = await fetch(buildApiUrl(path), {
+    ...init,
+    headers: {
+      Accept: "application/json",
+      Authorization: createBasicAuthHeader(username, password),
+      ...(init?.headers ?? {}),
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`API request failed for ${path}: ${response.status}`);
+  }
+
+  const payload: unknown = await response.json();
+
+  if (!guard(payload)) {
+    throw new Error(`API response shape is invalid for ${path}`);
+  }
+
+  return payload;
+}
+
+export async function loginAdmin(username: string, password: string) {
+  const response = await fetch(buildApiUrl("/admin/login"), {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      Authorization: createBasicAuthHeader(username, password),
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(response.status === 401 ? "账号或密码错误" : "管理员登录失败");
+  }
+
+  return {
+    username,
+    password,
+  };
+}
+
+export async function fetchAdminContent(username: string, password: string): Promise<AdminContentResponse> {
+  return fetchAdminJson<AdminContentResponse>(
+    "/admin/content",
+    isAdminContentResponse,
+    username,
+    password,
+  );
+}
+
+export async function saveAdminLives(
+  username: string,
+  password: string,
+  items: LivesResponse["items"],
+) {
+  const response = await fetchAdminJson<LivesResponse>(
+    "/admin/lives",
+    isLivesResponse,
+    username,
+    password,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ items }),
+    },
+  );
+
+  return response.items;
+}
+
+export async function saveAdminHighlights(
+  username: string,
+  password: string,
+  items: HighlightsResponse["items"],
+) {
+  const response = await fetchAdminJson<HighlightsResponse>(
+    "/admin/highlights",
+    isHighlightsResponse,
+    username,
+    password,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ items }),
+    },
+  );
+
+  return response.items;
 }

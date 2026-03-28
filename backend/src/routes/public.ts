@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 
-import { highlights, lives, now, profile } from "../data/public-content";
+import { now, profile } from "../data/public-content";
+import { getHighlightsContent, getLivesContent } from "../data/public-content-store";
 
 const publicRouter = new Hono();
 const DEFAULT_LIVES_LIMIT = 4;
@@ -28,10 +29,11 @@ publicRouter.get("/now", (c) => {
   return c.json(now);
 });
 
-publicRouter.get("/lives", (c) => {
+publicRouter.get("/lives", async (c) => {
+  const allLives = await getLivesContent();
   const cursor = c.req.query("cursor");
   const limit = parseLivesLimit(c.req.query("limit"));
-  const cursorIndex = cursor ? lives.findIndex((life) => life.id === cursor) : -1;
+  const cursorIndex = cursor ? allLives.findIndex((life) => life.id === cursor) : -1;
 
   if (cursor && cursorIndex === -1) {
     return c.json(
@@ -43,20 +45,22 @@ publicRouter.get("/lives", (c) => {
   }
 
   const startIndex = cursorIndex + 1;
-  const items = lives.slice(startIndex, startIndex + limit);
+  const items = allLives.slice(startIndex, startIndex + limit);
   const nextIndex = startIndex + items.length;
-  const nextCursor = nextIndex < lives.length && items.length > 0 ? items[items.length - 1].id : null;
+  const nextCursor = nextIndex < allLives.length && items.length > 0 ? items[items.length - 1].id : null;
 
   return c.json({
     items,
     pageInfo: {
       nextCursor,
-      hasMore: nextIndex < lives.length,
+      hasMore: nextIndex < allLives.length,
     },
   });
 });
 
-publicRouter.get("/highlights", (c) => {
+publicRouter.get("/highlights", async (c) => {
+  const highlights = await getHighlightsContent();
+
   return c.json({
     items: highlights,
   });

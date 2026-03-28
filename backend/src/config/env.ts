@@ -32,6 +32,8 @@ const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().positive().default(3000),
   FRONTEND_ORIGINS: z.string().trim().optional(),
+  ADMIN_USERNAME: z.string().trim().min(1).default("admin"),
+  ADMIN_PASSWORD: z.string().trim().min(1).default("190828xmd"),
   TURSO_DATABASE_URL: z.string().trim().optional(),
   TURSO_AUTH_TOKEN: z.string().trim().optional(),
 });

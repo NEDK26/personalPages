@@ -59,6 +59,12 @@ export interface HighlightsResponse {
   items: HighlightItem[];
 }
 
+export interface AdminContentResponse {
+  lives: LifeMoment[];
+  highlights: HighlightItem[];
+  editingEnabled: boolean;
+}
+
 export interface PublicContent {
   profile: Profile;
   now: Now;
@@ -192,4 +198,18 @@ export function isHighlightsResponse(value: unknown): value is HighlightsRespons
   }
 
   return Array.isArray(value.items) && value.items.every((item) => isHighlightItem(item));
+}
+
+export function isAdminContentResponse(value: unknown): value is AdminContentResponse {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  return (
+    Array.isArray(value.lives) &&
+    value.lives.every((item) => isLifeMoment(item)) &&
+    Array.isArray(value.highlights) &&
+    value.highlights.every((item) => isHighlightItem(item)) &&
+    typeof value.editingEnabled === "boolean"
+  );
 }
