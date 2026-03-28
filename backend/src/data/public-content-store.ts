@@ -32,7 +32,6 @@ const profileSchema = z.object({
   headline: z.string().trim().min(1),
   avatarUrl: z.string().trim().url(),
   location: z.string().trim().min(1),
-  shortBio: z.string().trim().min(1),
   tags: z.array(z.string().trim().min(1)),
   socials: profileSocialsSchema,
 });
@@ -210,6 +209,10 @@ function createTimestamp() {
   return new Date().toISOString();
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
 async function ensureContentStorage() {
   if (!db) {
     return;
@@ -272,6 +275,7 @@ async function ensureContentStorage() {
       await db.execute("CREATE INDEX IF NOT EXISTS idx_lives_status_order ON life_moments(status, sort_order)");
       await db.execute("CREATE INDEX IF NOT EXISTS idx_projects_status_order ON projects(status, sort_order)");
 
+      await migrateLegacyProfileIfNeeded();
       await migrateLegacyNowIfNeeded();
       await migrateLegacyLivesIfNeeded();
       await migrateLegacyHighlightsIfNeeded();
@@ -394,6 +398,27 @@ async function migrateLegacyNowIfNeeded() {
       updatedAt: nextNow.updatedAt,
     }),
   );
+}
+
+async function migrateLegacyProfileIfNeeded() {
+  if (!db) {
+    return;
+  }
+
+  const storedEntry = await readStoredContent(CONTENT_SCOPE_PROFILE);
+
+  if (!storedEntry) {
+    return;
+  }
+
+  const rawValue: unknown = JSON.parse(storedEntry.data);
+  const parsedProfile = profilePayloadSchema.safeParse(rawValue);
+
+  if (!parsedProfile.success || !isRecord(rawValue) || !("shortBio" in rawValue)) {
+    return;
+  }
+
+  await writeStoredContent(CONTENT_SCOPE_PROFILE, JSON.stringify(parsedProfile.data));
 }
 
 async function migrateLegacyLivesIfNeeded() {

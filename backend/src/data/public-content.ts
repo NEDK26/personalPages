@@ -3,8 +3,6 @@ export const profile = {
   headline: "Java 后端工程师｜软件工程硕士｜关注 AI 应用与业务智能化落地",
   avatarUrl: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=600&q=80",
   location: "中国·杭州",
-  shortBio:
-    "毕业于浙江工业大学软件工程硕士，目前从事 Java 后端开发。硕士期间参与过金融时间序列相关项目，工作中主要围绕基于 Dify 平台的文档核实流程建设与落地，关注后端工程能力、AI 工作流和业务效率优化。",
   tags: ["Java", "Spring Boot", "MySQL", "Redis", "Dify", "AI Workflow"],
   socials: {
     github: "https://github.com/NEDK26",

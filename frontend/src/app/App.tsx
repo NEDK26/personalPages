@@ -344,9 +344,9 @@ function ProfileCard({ profile, sectionId }: ProfileCardProps) {
   return (
     <section
       id={sectionId}
-      className="scroll-mt-24 flex flex-col items-center rounded-[1.5rem] bg-white/72 p-5 text-center backdrop-blur-sm sm:p-6 md:rounded-[2rem] md:border md:border-zinc-200 md:bg-white/80 md:p-8 md:shadow-sm"
+      className="scroll-mt-24 flex min-h-[calc(100svh-8.5rem)] flex-col items-center justify-center gap-4 rounded-[1.5rem] bg-white/72 px-4 py-5 text-center backdrop-blur-sm sm:min-h-0 sm:gap-5 sm:p-6 md:rounded-[2rem] md:border md:border-zinc-200 md:bg-white/80 md:p-8 md:shadow-sm"
     >
-      <div className="mb-5 h-32 w-32 overflow-hidden rounded-full border-4 border-white bg-zinc-200 shadow-lg sm:mb-6 sm:h-44 sm:w-44 lg:h-48 lg:w-48">
+      <div className="h-24 w-24 overflow-hidden rounded-full border-4 border-white bg-zinc-200 shadow-lg sm:h-28 sm:w-28 md:h-44 md:w-44 lg:h-48 lg:w-48">
         <img
           src={avatarImage}
           alt={`${profile.name} avatar`}
@@ -354,26 +354,27 @@ function ProfileCard({ profile, sectionId }: ProfileCardProps) {
         />
       </div>
 
-      <h2 className="mb-3 text-2xl text-slate-900 sm:text-3xl">{profile.name}</h2>
-      <p className="mb-4 text-base leading-7 text-slate-700 sm:text-lg">{profile.headline}</p>
-      <p className="mb-5 text-sm leading-6 text-slate-600 sm:text-base sm:leading-relaxed">{profile.shortBio}</p>
+      <div className="space-y-2 sm:space-y-3">
+        <h2 className="text-[1.75rem] leading-none text-slate-900 sm:text-3xl">{profile.name}</h2>
+        <p className="max-w-[22rem] text-sm leading-6 text-slate-700 sm:text-base sm:leading-7 md:text-lg">{profile.headline}</p>
+      </div>
 
-      <div className="mb-5 flex flex-wrap items-center justify-center gap-2 text-sm text-slate-600 sm:mb-6 sm:gap-3">
+      <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-slate-600 sm:gap-3 sm:text-sm">
         <span className="inline-flex items-center gap-1 rounded-full bg-zinc-200 px-3 py-1">
           <MapPin className="h-4 w-4" />
           {profile.location}
         </span>
       </div>
 
-      <div className="mb-6 flex flex-wrap justify-center gap-2">
+      <div className="flex max-w-sm flex-wrap justify-center gap-1.5 sm:gap-2">
         {profile.tags.map((tag) => (
-          <span key={tag} className="rounded-full bg-zinc-200 px-3 py-1 text-sm text-slate-700">
+          <span key={tag} className="rounded-full bg-zinc-200 px-2.5 py-1 text-xs text-slate-700 sm:px-3 sm:text-sm">
             {tag}
           </span>
         ))}
       </div>
 
-      <div className="flex w-full flex-wrap justify-center gap-3 sm:gap-4">
+      <div className="flex w-full flex-wrap justify-center gap-2.5 sm:gap-4">
         {socialLinkConfig.map(({ key, label, icon: Icon }) => {
           const href = profile.socials[key];
 
@@ -382,7 +383,7 @@ function ProfileCard({ profile, sectionId }: ProfileCardProps) {
               key={key}
               href={href}
               aria-label={label}
-              className="rounded-full bg-white/90 p-3 text-slate-800 transition-colors hover:bg-zinc-100 hover:text-slate-950"
+              className="rounded-full bg-white/90 p-2.5 text-slate-800 transition-colors hover:bg-zinc-100 hover:text-slate-950 sm:p-3"
               target={opensNewTab(href) ? "_blank" : undefined}
               rel={opensNewTab(href) ? "noreferrer" : undefined}
             >
@@ -1421,13 +1422,6 @@ function AdminDialog({
                       onChange={(event) => updateDraftProfileTags(event.target.value)}
                       placeholder="标签，用逗号分隔"
                       className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900 md:col-span-2"
-                    />
-                    <textarea
-                      value={draftProfile.shortBio}
-                      onChange={(event) => updateDraftProfileField("shortBio", event.target.value)}
-                      placeholder="简介"
-                      rows={5}
-                      className="rounded-[1.5rem] border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900 md:col-span-2"
                     />
                   </div>
                 </div>

@@ -17,7 +17,6 @@ export interface Profile {
   headline: string;
   avatarUrl: string;
   location: string;
-  shortBio: string;
   tags: string[];
   socials: ProfileSocials;
 }
@@ -171,7 +170,6 @@ export function isProfile(value: unknown): value is Profile {
     typeof value.headline === "string" &&
     typeof value.avatarUrl === "string" &&
     typeof value.location === "string" &&
-    typeof value.shortBio === "string" &&
     isStringArray(value.tags) &&
     isProfileSocials(value.socials)
   );
