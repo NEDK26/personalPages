@@ -2,6 +2,7 @@ import { Hono } from "hono";
 
 import { env } from "../config/env";
 import {
+  adminContentPayloadSchema,
   getHighlightsContent,
   getLivesContent,
   getNowContent,
@@ -13,6 +14,7 @@ import {
   profilePayloadSchema,
   saveHighlightsContent,
   saveLivesContent,
+  saveAdminContent,
   saveNowContent,
   saveProfileContent,
 } from "../data/public-content-store";
@@ -116,6 +118,32 @@ adminRouter.get("/admin/content", async (c) => {
     lives,
     highlights,
     editingEnabled: isAdminEditingEnabled(),
+  });
+});
+
+adminRouter.put("/admin/content", async (c) => {
+  if (!isAdminEditingEnabled()) {
+    return createEditingUnavailableResponse();
+  }
+
+  const payload: unknown = await c.req.json();
+  const parsedPayload = adminContentPayloadSchema.safeParse(payload);
+
+  if (!parsedPayload.success) {
+    return c.json(
+      {
+        error: "Invalid admin content payload",
+        issues: parsedPayload.error.issues,
+      },
+      400,
+    );
+  }
+
+  const savedContent = await saveAdminContent(parsedPayload.data);
+
+  return c.json({
+    ...savedContent,
+    editingEnabled: true,
   });
 });
 

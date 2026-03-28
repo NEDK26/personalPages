@@ -150,6 +150,12 @@ export const livesPayloadSchema = z.object({
 export const highlightsPayloadSchema = z.object({
   items: z.array(highlightItemSchema),
 });
+export const adminContentPayloadSchema = z.object({
+  profile: profilePayloadSchema,
+  now: nowPayloadSchema,
+  lives: z.array(lifeMomentSchema),
+  highlights: z.array(highlightItemSchema),
+});
 
 export type ContentStatus = z.infer<typeof contentStatusSchema>;
 export type ProfileContent = z.infer<typeof profileSchema>;
@@ -587,6 +593,110 @@ async function replaceJourneyItems(items: JourneyItem[]) {
   }
 }
 
+function createUpsertStoredContentStatement(
+  scope: "profile" | "now" | "lives" | "highlights",
+  data: string,
+  timestamp: string,
+) {
+  return {
+    sql: `
+      INSERT INTO public_content (scope, data, updated_at)
+      VALUES (?1, ?2, ?3)
+      ON CONFLICT(scope) DO UPDATE SET
+        data = excluded.data,
+        updated_at = excluded.updated_at
+    `,
+    args: [scope, data, timestamp],
+  };
+}
+
+function createReplaceJourneyStatements(items: JourneyItem[], timestamp: string) {
+  return [
+    {
+      sql: "DELETE FROM journey_items",
+      args: [],
+    },
+    ...items.map((item) => ({
+      sql: `
+        INSERT INTO journey_items (id, type, title, organization, location, period, description, status, sort_order, created_at, updated_at)
+        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
+      `,
+      args: [
+        item.id,
+        item.type,
+        item.title,
+        item.organization,
+        item.location,
+        item.period,
+        item.description,
+        item.status,
+        item.sortOrder,
+        timestamp,
+        timestamp,
+      ],
+    })),
+  ];
+}
+
+function createReplaceLifeMomentStatements(items: LifeMoment[], timestamp: string) {
+  return [
+    {
+      sql: "DELETE FROM life_moments",
+      args: [],
+    },
+    ...items.map((item) => ({
+      sql: `
+        INSERT INTO life_moments (id, title, image_url, alt, location, captured_at, description, width, height, status, sort_order, created_at, updated_at)
+        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)
+      `,
+      args: [
+        item.id,
+        item.title,
+        item.imageUrl,
+        item.alt,
+        item.location,
+        item.capturedAt,
+        item.description,
+        item.width,
+        item.height,
+        item.status,
+        item.sortOrder,
+        timestamp,
+        timestamp,
+      ],
+    })),
+  ];
+}
+
+function createReplaceProjectStatements(items: HighlightItem[], timestamp: string) {
+  return [
+    {
+      sql: "DELETE FROM projects",
+      args: [],
+    },
+    ...items.map((item) => ({
+      sql: `
+        INSERT INTO projects (id, title, summary, description, kind, period, stack_json, link, status, sort_order, created_at, updated_at)
+        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
+      `,
+      args: [
+        item.id,
+        item.title,
+        item.summary,
+        item.description,
+        item.kind,
+        item.period,
+        JSON.stringify(item.stack),
+        item.link ?? "",
+        item.status,
+        item.sortOrder,
+        timestamp,
+        timestamp,
+      ],
+    })),
+  ];
+}
+
 async function replaceLifeMoments(items: LifeMoment[]) {
   if (!db) {
     throw new Error("Admin editing requires a configured database");
@@ -765,6 +875,53 @@ export async function saveHighlightsContent(items: HighlightItem[]) {
   await replaceProjects(parsedHighlights);
 
   return parsedHighlights;
+}
+
+export async function saveAdminContent(content: {
+  profile: ProfileContent;
+  now: NowContent;
+  lives: LifeMoment[];
+  highlights: HighlightItem[];
+}) {
+  if (!db) {
+    throw new Error("Admin editing requires a configured database");
+  }
+
+  const timestamp = createTimestamp();
+  const parsedProfile = profilePayloadSchema.parse(content.profile);
+  const parsedNow = nowPayloadSchema.parse({
+    ...content.now,
+    updatedAt: timestamp.slice(0, 10),
+  });
+  const parsedLives = z.array(lifeMomentSchema).parse(content.lives);
+  const parsedHighlights = z.array(highlightItemSchema).parse(content.highlights);
+
+  await ensureContentStorage();
+
+  await db.batch(
+    [
+      createUpsertStoredContentStatement(CONTENT_SCOPE_PROFILE, JSON.stringify(parsedProfile), timestamp),
+      createUpsertStoredContentStatement(
+        CONTENT_SCOPE_NOW,
+        JSON.stringify({
+          summary: parsedNow.summary,
+          updatedAt: parsedNow.updatedAt,
+        }),
+        timestamp,
+      ),
+      ...createReplaceJourneyStatements(parsedNow.items, timestamp),
+      ...createReplaceLifeMomentStatements(parsedLives, timestamp),
+      ...createReplaceProjectStatements(parsedHighlights, timestamp),
+    ],
+    "write",
+  );
+
+  return {
+    profile: parsedProfile,
+    now: parsedNow,
+    lives: parsedLives,
+    highlights: parsedHighlights,
+  };
 }
 
 export function isAdminEditingEnabled() {

@@ -1,5 +1,7 @@
 import {
   AlertCircle,
+  ArrowDown,
+  ArrowUp,
   BriefcaseBusiness,
   CalendarDays,
   ChevronLeft,
@@ -36,6 +38,7 @@ import {
 } from "./components/ui/dialog";
 import {
   fetchAdminContent,
+  saveAdminContent,
   fetchMoreLives,
   fetchPublicContent,
   loginAdmin,
@@ -151,6 +154,11 @@ interface AdminDialogProps {
 
 const ADMIN_STORAGE_KEY = "personal-space-admin-credentials";
 const ADMIN_HASH = "#admin";
+const statusOptions = [
+  { value: "published", label: "显示" },
+  { value: "draft", label: "草稿" },
+  { value: "hidden", label: "隐藏" },
+] as const satisfies ReadonlyArray<{ value: ContentStatus; label: string }>;
 
 const navigationItems = [
   { id: "about", label: "About", mobileLabel: "About", icon: UserRound },
@@ -264,6 +272,26 @@ function createEmptyHighlightItem() {
     status: "published",
     sortOrder: 0,
   } satisfies HighlightItem;
+}
+
+function normalizeSortOrder<TItem extends { sortOrder: number }>(items: TItem[]) {
+  return items.map((item, index) => ({
+    ...item,
+    sortOrder: index,
+  }));
+}
+
+function moveArrayItem<TItem>(items: TItem[], fromIndex: number, toIndex: number) {
+  if (toIndex < 0 || toIndex >= items.length || fromIndex === toIndex) {
+    return items;
+  }
+
+  const nextItems = [...items];
+  const [movedItem] = nextItems.splice(fromIndex, 1);
+
+  nextItems.splice(toIndex, 0, movedItem);
+
+  return nextItems;
 }
 
 function SectionShell({ title, eyebrow, sectionId, children }: SectionShellProps) {
@@ -686,6 +714,10 @@ function AdminDialog({
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [credentials, setCredentials] = useState<AdminCredentials | null>(null);
+  const [savedProfileState, setSavedProfileState] = useState<Profile>(profile);
+  const [savedNowState, setSavedNowState] = useState<Now>(now);
+  const [savedLivesState, setSavedLivesState] = useState<LifeMoment[]>(lives);
+  const [savedHighlightsState, setSavedHighlightsState] = useState<HighlightItem[]>(highlights);
   const [draftProfile, setDraftProfile] = useState<Profile>(profile);
   const [draftNow, setDraftNow] = useState<Now>(now);
   const [draftLives, setDraftLives] = useState<LifeMoment[]>(lives);
@@ -697,20 +729,40 @@ function AdminDialog({
   const [editingEnabled, setEditingEnabled] = useState(true);
 
   useEffect(() => {
+    if (open) {
+      return;
+    }
+
+    setSavedProfileState(profile);
     setDraftProfile(profile);
-  }, [profile]);
+  }, [open, profile]);
 
   useEffect(() => {
+    if (open) {
+      return;
+    }
+
+    setSavedNowState(now);
     setDraftNow(now);
-  }, [now]);
+  }, [now, open]);
 
   useEffect(() => {
+    if (open) {
+      return;
+    }
+
+    setSavedLivesState(lives);
     setDraftLives(lives);
-  }, [lives]);
+  }, [lives, open]);
 
   useEffect(() => {
+    if (open) {
+      return;
+    }
+
+    setSavedHighlightsState(highlights);
     setDraftHighlights(highlights);
-  }, [highlights]);
+  }, [highlights, open]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -750,6 +802,10 @@ function AdminDialog({
     try {
       const content = await fetchAdminContent(nextCredentials.username, nextCredentials.password);
 
+      setSavedProfileState(content.profile);
+      setSavedNowState(content.now);
+      setSavedLivesState(content.lives);
+      setSavedHighlightsState(content.highlights);
       setDraftProfile(content.profile);
       setDraftNow(content.now);
       setDraftLives(content.lives);
@@ -800,9 +856,9 @@ function AdminDialog({
     try {
       const savedProfile = await saveAdminProfile(credentials.username, credentials.password, draftProfile);
 
+      setSavedProfileState(savedProfile);
       setDraftProfile(savedProfile);
       onReplaceProfile(savedProfile);
-      onOpenChange(false);
     } catch (error) {
       setAdminError(getErrorMessage(error));
     } finally {
@@ -849,19 +905,12 @@ function AdminDialog({
     }));
   }
 
-  function updateDraftJourneySortOrder(index: number, value: number) {
+  function moveDraftJourneyItem(index: number, direction: "up" | "down") {
     setDraftNow((currentNow) => ({
       ...currentNow,
-      items: currentNow.items.map((item, currentIndex) => {
-        if (currentIndex !== index) {
-          return item;
-        }
-
-        return {
-          ...item,
-          sortOrder: value,
-        };
-      }),
+      items: normalizeSortOrder(
+        moveArrayItem(currentNow.items, index, direction === "up" ? index - 1 : index + 1),
+      ),
     }));
   }
 
@@ -874,11 +923,15 @@ function AdminDialog({
     setAdminError(null);
 
     try {
-      const savedNow = await saveAdminNow(credentials.username, credentials.password, draftNow);
+      const normalizedNow = {
+        ...draftNow,
+        items: normalizeSortOrder(draftNow.items),
+      };
+      const savedNow = await saveAdminNow(credentials.username, credentials.password, normalizedNow);
 
+      setSavedNowState(savedNow);
       setDraftNow(savedNow);
       onReplaceNow(savedNow);
-      onOpenChange(false);
     } catch (error) {
       setAdminError(getErrorMessage(error));
     } finally {
@@ -893,6 +946,24 @@ function AdminDialog({
 
     void loadAdminData(credentials);
   }, [open, credentials]);
+
+  const hasPendingChanges =
+    JSON.stringify(draftProfile) !== JSON.stringify(savedProfileState) ||
+    JSON.stringify(draftNow) !== JSON.stringify(savedNowState) ||
+    JSON.stringify(draftLives) !== JSON.stringify(savedLivesState) ||
+    JSON.stringify(draftHighlights) !== JSON.stringify(savedHighlightsState);
+
+  function handleDialogOpenChange(nextOpen: boolean) {
+    if (!nextOpen && hasPendingChanges && typeof window !== "undefined") {
+      const shouldClose = window.confirm("你还有未保存的修改，确定直接关闭吗？");
+
+      if (!shouldClose) {
+        return;
+      }
+    }
+
+    onOpenChange(nextOpen);
+  }
 
   async function handleLoginSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -957,18 +1028,11 @@ function AdminDialog({
     });
   }
 
-  function updateDraftLifeSortOrder(index: number, value: number) {
+  function moveDraftLife(index: number, direction: "up" | "down") {
     setDraftLives((currentLives) => {
-      return currentLives.map((life, currentIndex) => {
-        if (currentIndex !== index) {
-          return life;
-        }
-
-        return {
-          ...life,
-          sortOrder: value,
-        };
-      });
+      return normalizeSortOrder(
+        moveArrayItem(currentLives, index, direction === "up" ? index - 1 : index + 1),
+      );
     });
   }
 
@@ -1002,18 +1066,11 @@ function AdminDialog({
     });
   }
 
-  function updateDraftHighlightSortOrder(index: number, value: number) {
+  function moveDraftHighlight(index: number, direction: "up" | "down") {
     setDraftHighlights((currentHighlights) => {
-      return currentHighlights.map((highlight, currentIndex) => {
-        if (currentIndex !== index) {
-          return highlight;
-        }
-
-        return {
-          ...highlight,
-          sortOrder: value,
-        };
-      });
+      return normalizeSortOrder(
+        moveArrayItem(currentHighlights, index, direction === "up" ? index - 1 : index + 1),
+      );
     });
   }
 
@@ -1044,11 +1101,15 @@ function AdminDialog({
     setAdminError(null);
 
     try {
-      const savedLives = await saveAdminLives(credentials.username, credentials.password, draftLives);
+      const savedLives = await saveAdminLives(
+        credentials.username,
+        credentials.password,
+        normalizeSortOrder(draftLives),
+      );
 
+      setSavedLivesState(savedLives);
       setDraftLives(savedLives);
       onReplaceLives(savedLives);
-      onOpenChange(false);
     } catch (error) {
       setAdminError(getErrorMessage(error));
     } finally {
@@ -1065,10 +1126,55 @@ function AdminDialog({
     setAdminError(null);
 
     try {
-      const savedHighlights = await saveAdminHighlights(credentials.username, credentials.password, draftHighlights);
+      const savedHighlights = await saveAdminHighlights(
+        credentials.username,
+        credentials.password,
+        normalizeSortOrder(draftHighlights),
+      );
 
+      setSavedHighlightsState(savedHighlights);
       setDraftHighlights(savedHighlights);
       onReplaceHighlights(savedHighlights);
+    } catch (error) {
+      setAdminError(getErrorMessage(error));
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function handleSaveAll() {
+    if (!credentials) {
+      return;
+    }
+
+    setIsSaving(true);
+    setAdminError(null);
+
+    try {
+      const savedContent = await saveAdminContent(credentials.username, credentials.password, {
+        profile: draftProfile,
+        now: {
+          ...draftNow,
+          items: normalizeSortOrder(draftNow.items),
+        },
+        lives: normalizeSortOrder(draftLives),
+        highlights: normalizeSortOrder(draftHighlights),
+        editingEnabled,
+      });
+
+      setSavedProfileState(savedContent.profile);
+      setSavedNowState(savedContent.now);
+      setSavedLivesState(savedContent.lives);
+      setSavedHighlightsState(savedContent.highlights);
+      setDraftProfile(savedContent.profile);
+      setDraftNow(savedContent.now);
+      setDraftLives(savedContent.lives);
+      setDraftHighlights(savedContent.highlights);
+      setEditingEnabled(savedContent.editingEnabled);
+      onReplaceProfile(savedContent.profile);
+      onReplaceNow(savedContent.now);
+      onReplaceLives(savedContent.lives);
+      onReplaceHighlights(savedContent.highlights);
       onOpenChange(false);
     } catch (error) {
       setAdminError(getErrorMessage(error));
@@ -1078,7 +1184,7 @@ function AdminDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleDialogOpenChange}>
       <DialogContent className="max-w-[calc(100%-1rem)] border-zinc-300 bg-white/96 shadow-[0_24px_80px_rgba(15,23,42,0.16)] sm:max-w-5xl">
         {!credentials ? (
           <form className="grid gap-4" onSubmit={handleLoginSubmit}>
@@ -1132,6 +1238,19 @@ function AdminDialog({
                 <LogOut className="h-4 w-4" />
                 退出
               </button>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => void handleSaveAll()}
+                disabled={isSaving || !editingEnabled || !hasPendingChanges}
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-slate-950 px-5 py-3 text-sm text-white transition-colors hover:bg-black disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isSaving ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
+                保存全部
+              </button>
+              {hasPendingChanges ? <span className="text-sm text-amber-600">有未保存修改</span> : null}
             </div>
 
             <div className="inline-flex w-fit rounded-full border border-zinc-300 bg-zinc-100 p-1">
@@ -1271,13 +1390,13 @@ function AdminDialog({
                       onClick={() =>
                         setDraftNow((currentNow) => ({
                           ...currentNow,
-                          items: [
+                          items: normalizeSortOrder([
                             ...currentNow.items,
                             {
                               ...createEmptyJourneyItem(),
                               sortOrder: currentNow.items.length,
                             },
-                          ],
+                          ]),
                         }))
                       }
                       className="inline-flex items-center gap-2 rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm text-slate-800 transition-colors hover:bg-zinc-100"
@@ -1292,19 +1411,42 @@ function AdminDialog({
                       <section key={`${item.id}-${index}`} className="rounded-[1.5rem] border border-zinc-300 bg-white p-4">
                         <div className="mb-3 flex items-center justify-between">
                           <p className="text-sm uppercase tracking-[0.24em] text-slate-500">Journey #{index + 1}</p>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setDraftNow((currentNow) => ({
-                                ...currentNow,
-                                items: currentNow.items.filter((_, currentIndex) => currentIndex !== index),
-                              }))
-                            }
-                            className="inline-flex items-center gap-1 rounded-full border border-zinc-300 bg-white px-3 py-1.5 text-sm text-rose-500 transition-colors hover:bg-rose-50"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            删除
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <span className="rounded-full border border-zinc-200 bg-zinc-100 px-3 py-1 text-xs text-slate-500">
+                              排序 {item.sortOrder + 1}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => moveDraftJourneyItem(index, "up")}
+                              disabled={index === 0}
+                              className="inline-flex items-center justify-center rounded-full border border-zinc-300 bg-white p-2 text-slate-700 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                              <ArrowUp className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => moveDraftJourneyItem(index, "down")}
+                              disabled={index === draftNow.items.length - 1}
+                              className="inline-flex items-center justify-center rounded-full border border-zinc-300 bg-white p-2 text-slate-700 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                              <ArrowDown className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setDraftNow((currentNow) => ({
+                                  ...currentNow,
+                                  items: normalizeSortOrder(
+                                    currentNow.items.filter((_, currentIndex) => currentIndex !== index),
+                                  ),
+                                }))
+                              }
+                              className="inline-flex items-center gap-1 rounded-full border border-zinc-300 bg-white px-3 py-1.5 text-sm text-rose-500 transition-colors hover:bg-rose-50"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              删除
+                            </button>
+                          </div>
                         </div>
 
                         <div className="grid gap-3 md:grid-cols-2">
@@ -1321,16 +1463,12 @@ function AdminDialog({
                             onChange={(event) => updateDraftJourneyStatus(index, event.target.value as ContentStatus)}
                             className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900"
                           >
-                            <option value="published">published</option>
-                            <option value="draft">draft</option>
-                            <option value="hidden">hidden</option>
+                            {statusOptions.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
                           </select>
-                          <input
-                            value={String(item.sortOrder)}
-                            onChange={(event) => updateDraftJourneySortOrder(index, Number(event.target.value) || 0)}
-                            placeholder="排序"
-                            className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900"
-                          />
                           <input value={item.period} onChange={(event) => updateDraftJourneyItem(index, "period", event.target.value)} placeholder="时间范围" className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900" />
                           <input value={item.title} onChange={(event) => updateDraftJourneyItem(index, "title", event.target.value)} placeholder="标题" className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900" />
                           <input value={item.organization} onChange={(event) => updateDraftJourneyItem(index, "organization", event.target.value)} placeholder="学校 / 公司" className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900" />
@@ -1358,13 +1496,15 @@ function AdminDialog({
                   <button
                     type="button"
                     onClick={() =>
-                      setDraftLives((currentLives) => [
-                        ...currentLives,
-                        {
-                          ...createEmptyLifeMoment(),
-                          sortOrder: currentLives.length,
-                        },
-                      ])
+                      setDraftLives((currentLives) =>
+                        normalizeSortOrder([
+                          ...currentLives,
+                          {
+                            ...createEmptyLifeMoment(),
+                            sortOrder: currentLives.length,
+                          },
+                        ]),
+                      )
                     }
                     className="inline-flex items-center gap-2 rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm text-slate-800 transition-colors hover:bg-zinc-100"
                   >
@@ -1376,17 +1516,42 @@ function AdminDialog({
                 <div className="grid max-h-[55vh] gap-4 overflow-y-auto pr-1">
                   {draftLives.map((life, index) => (
                     <section key={`${life.id}-${index}`} className="rounded-[1.5rem] border border-zinc-300 bg-zinc-50/70 p-4">
-                      <div className="mb-3 flex items-center justify-between">
-                        <p className="text-sm uppercase tracking-[0.24em] text-slate-500">Life #{index + 1}</p>
-                        <button
-                          type="button"
-                          onClick={() => setDraftLives((currentLives) => currentLives.filter((_, currentIndex) => currentIndex !== index))}
-                          className="inline-flex items-center gap-1 rounded-full border border-zinc-300 bg-white px-3 py-1.5 text-sm text-rose-500 transition-colors hover:bg-rose-50"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          删除
-                        </button>
-                      </div>
+                        <div className="mb-3 flex items-center justify-between">
+                          <p className="text-sm uppercase tracking-[0.24em] text-slate-500">Life #{index + 1}</p>
+                          <div className="flex items-center gap-2">
+                            <span className="rounded-full border border-zinc-200 bg-zinc-100 px-3 py-1 text-xs text-slate-500">
+                              排序 {life.sortOrder + 1}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => moveDraftLife(index, "up")}
+                              disabled={index === 0}
+                              className="inline-flex items-center justify-center rounded-full border border-zinc-300 bg-white p-2 text-slate-700 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                              <ArrowUp className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => moveDraftLife(index, "down")}
+                              disabled={index === draftLives.length - 1}
+                              className="inline-flex items-center justify-center rounded-full border border-zinc-300 bg-white p-2 text-slate-700 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                              <ArrowDown className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setDraftLives((currentLives) =>
+                                  normalizeSortOrder(currentLives.filter((_, currentIndex) => currentIndex !== index)),
+                                )
+                              }
+                              className="inline-flex items-center gap-1 rounded-full border border-zinc-300 bg-white px-3 py-1.5 text-sm text-rose-500 transition-colors hover:bg-rose-50"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              删除
+                            </button>
+                          </div>
+                        </div>
 
                       <div className="grid gap-3 md:grid-cols-2">
                         <input value={life.title} onChange={(event) => updateDraftLife(index, "title", event.target.value)} placeholder="标题" className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900" />
@@ -1396,11 +1561,12 @@ function AdminDialog({
                           onChange={(event) => updateDraftLifeStatus(index, event.target.value as ContentStatus)}
                           className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900"
                         >
-                          <option value="published">published</option>
-                          <option value="draft">draft</option>
-                          <option value="hidden">hidden</option>
+                          {statusOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
                         </select>
-                        <input value={String(life.sortOrder)} onChange={(event) => updateDraftLifeSortOrder(index, Number(event.target.value) || 0)} placeholder="排序" className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900" />
                         <input value={life.imageUrl} onChange={(event) => updateDraftLife(index, "imageUrl", event.target.value)} placeholder="图片地址" className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900 md:col-span-2" />
                         <input value={life.alt} onChange={(event) => updateDraftLife(index, "alt", event.target.value)} placeholder="图片 alt 文案" className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900 md:col-span-2" />
                         <input value={life.capturedAt} onChange={(event) => updateDraftLife(index, "capturedAt", event.target.value)} placeholder="拍摄日期 YYYY-MM-DD" className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900" />
@@ -1430,13 +1596,15 @@ function AdminDialog({
                   <button
                     type="button"
                     onClick={() =>
-                      setDraftHighlights((currentHighlights) => [
-                        ...currentHighlights,
-                        {
-                          ...createEmptyHighlightItem(),
-                          sortOrder: currentHighlights.length,
-                        },
-                      ])
+                      setDraftHighlights((currentHighlights) =>
+                        normalizeSortOrder([
+                          ...currentHighlights,
+                          {
+                            ...createEmptyHighlightItem(),
+                            sortOrder: currentHighlights.length,
+                          },
+                        ]),
+                      )
                     }
                     className="inline-flex items-center gap-2 rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm text-slate-800 transition-colors hover:bg-zinc-100"
                   >
@@ -1448,17 +1616,44 @@ function AdminDialog({
                 <div className="grid max-h-[55vh] gap-4 overflow-y-auto pr-1">
                   {draftHighlights.map((highlight, index) => (
                     <section key={`${highlight.id}-${index}`} className="rounded-[1.5rem] border border-zinc-300 bg-zinc-50/70 p-4">
-                      <div className="mb-3 flex items-center justify-between">
-                        <p className="text-sm uppercase tracking-[0.24em] text-slate-500">Work #{index + 1}</p>
-                        <button
-                          type="button"
-                          onClick={() => setDraftHighlights((currentHighlights) => currentHighlights.filter((_, currentIndex) => currentIndex !== index))}
-                          className="inline-flex items-center gap-1 rounded-full border border-zinc-300 bg-white px-3 py-1.5 text-sm text-rose-500 transition-colors hover:bg-rose-50"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          删除
-                        </button>
-                      </div>
+                        <div className="mb-3 flex items-center justify-between">
+                          <p className="text-sm uppercase tracking-[0.24em] text-slate-500">Work #{index + 1}</p>
+                          <div className="flex items-center gap-2">
+                            <span className="rounded-full border border-zinc-200 bg-zinc-100 px-3 py-1 text-xs text-slate-500">
+                              排序 {highlight.sortOrder + 1}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => moveDraftHighlight(index, "up")}
+                              disabled={index === 0}
+                              className="inline-flex items-center justify-center rounded-full border border-zinc-300 bg-white p-2 text-slate-700 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                              <ArrowUp className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => moveDraftHighlight(index, "down")}
+                              disabled={index === draftHighlights.length - 1}
+                              className="inline-flex items-center justify-center rounded-full border border-zinc-300 bg-white p-2 text-slate-700 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                              <ArrowDown className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setDraftHighlights((currentHighlights) =>
+                                  normalizeSortOrder(
+                                    currentHighlights.filter((_, currentIndex) => currentIndex !== index),
+                                  ),
+                                )
+                              }
+                              className="inline-flex items-center gap-1 rounded-full border border-zinc-300 bg-white px-3 py-1.5 text-sm text-rose-500 transition-colors hover:bg-rose-50"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              删除
+                            </button>
+                          </div>
+                        </div>
 
                       <div className="grid gap-3">
                         <input value={highlight.title} onChange={(event) => updateDraftHighlight(index, "title", event.target.value)} placeholder="标题" className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900" />
@@ -1469,11 +1664,12 @@ function AdminDialog({
                           <option value="skill">skill</option>
                         </select>
                         <select value={highlight.status} onChange={(event) => updateDraftHighlightStatus(index, event.target.value as ContentStatus)} className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900">
-                          <option value="published">published</option>
-                          <option value="draft">draft</option>
-                          <option value="hidden">hidden</option>
+                          {statusOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
                         </select>
-                        <input value={String(highlight.sortOrder)} onChange={(event) => updateDraftHighlightSortOrder(index, Number(event.target.value) || 0)} placeholder="排序" className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900" />
                         <input value={highlight.link ?? ""} onChange={(event) => updateDraftHighlight(index, "link", event.target.value)} placeholder="项目链接（可选）" className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900" />
                         <input value={highlight.stack.join(", ")} onChange={(event) => updateDraftHighlightStack(index, event.target.value)} placeholder="技术栈，用逗号分隔" className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900" />
                         <textarea value={highlight.summary} onChange={(event) => updateDraftHighlight(index, "summary", event.target.value)} placeholder="卡片摘要" rows={3} className="rounded-[1.5rem] border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900" />
@@ -1920,10 +2116,7 @@ export default function App() {
       <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-zinc-200 to-white p-4 text-slate-700">
         <div className="w-full max-w-md rounded-[1.75rem] border border-zinc-200 bg-white/90 p-6 text-center shadow-[0_24px_80px_rgba(15,23,42,0.12)] backdrop-blur-xl sm:rounded-[2rem] sm:p-8">
           <RefreshCw className="mx-auto mb-4 h-10 w-10 animate-spin text-slate-900" />
-          <h1 className="mb-2 text-xl text-slate-900 sm:text-2xl">正在连接后端</h1>
-          <p className="text-sm leading-6 text-slate-600 sm:text-base sm:leading-relaxed">
-            正在读取个人资料、生活照片和项目亮点数据。
-          </p>
+          <h1 className="mb-2 text-xl text-slate-900 sm:text-2xl">Loding...</h1>
         </div>
       </div>
     );
