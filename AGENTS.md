@@ -4,10 +4,11 @@ This file is for coding agents working in `/Users/minda66/Desktop/projects/demo-
 
 ## Repository Scope
 
-- The active application currently lives in `backend/`.
-- `frontend/` exists but is empty at the time of writing.
+- The active applications live in both `backend/` and `frontend/`.
+- `backend/` is the Hono API and content persistence layer.
+- `frontend/` is the Vite + React app and also contains the Vercel proxy functions used in production.
 - There is no existing monorepo task runner; use package-level commands directly.
-- Do not assume missing tooling exists. Check `backend/package.json` before introducing new commands.
+- Do not assume missing tooling exists. Check `backend/package.json` or `frontend/package.json` before introducing new commands.
 
 ## Project Layout
 
@@ -19,37 +20,66 @@ This file is for coding agents working in `/Users/minda66/Desktop/projects/demo-
 - `backend/src/data/` contains static response content.
 - `backend/dist/` is compiled output; do not edit it manually.
 - `backend/.env.example` documents expected environment variables.
+- `frontend/src/app/App.tsx` contains the main UI and admin dialog.
+- `frontend/src/lib/api.ts` contains browser-side API calls and always talks to same-origin `/api`.
+- `frontend/api/` contains explicit Vercel serverless proxy routes such as `health.ts`, `profile.ts`, and `admin/login.ts`.
+- `frontend/vercel.json` contains the frontend Vercel build settings.
 
 ## Working Directory
 
-- For nearly all development commands, run from `backend/`.
+- For backend commands, run from `backend/`.
+- For frontend commands and Vercel proxy work, run from `frontend/`.
 - Repository root is useful for cross-project documentation only.
-- When referencing files in agent output, use workspace-relative paths such as `backend/src/app.ts`.
+- When referencing files in agent output, use workspace-relative paths such as `backend/src/app.ts` or `frontend/src/app/App.tsx`.
 
 ## Setup
 
-- Install dependencies with `npm install` from `backend/`.
+- Install dependencies with `npm install` from both `backend/` and `frontend/` when needed.
 - Copy `backend/.env.example` to `backend/.env` when local environment variables are needed.
 - Do not commit `backend/.env`.
 - Required runtime values are validated in `backend/src/config/env.ts`.
 
 ## Environment Variables
 
+- Backend:
 - `PORT`: server port; defaults to `3000` via Zod coercion.
+- `FRONTEND_ORIGINS`: comma-separated allowed origins for backend CORS.
+- `ADMIN_USERNAME`: admin basic-auth username; defaults to `admin`.
+- `ADMIN_PASSWORD`: admin basic-auth password; defaults to `190828xmd`.
 - `BLOB_READ_WRITE_TOKEN`: optional unless Blob-backed image uploads are required.
 - `TURSO_DATABASE_URL`: optional unless database-backed features are required.
 - `TURSO_AUTH_TOKEN`: optional unless database-backed features are required.
 - `NODE_ENV`: parsed as `development | test | production`; defaults to `development`.
+- Frontend:
+- `VITE_API_BASE_URL`: keep this as `/api` in production so the browser talks to same-origin proxy routes.
+- `VITE_PROXY_TARGET`: local Vite dev proxy target; defaults to `http://localhost:3000`.
+- `BACKEND_API_BASE_URL`: set this only in the frontend Vercel project runtime so serverless proxy routes know where the backend is deployed.
+
+## Vercel Frontend-Backend Connection
+
+- Deploy `backend/` and `frontend/` as separate Vercel projects.
+- In production, the browser must call same-origin frontend routes like `/api/profile` and `/api/admin/login`; do not point the browser directly at the backend Vercel domain.
+- The frontend Vercel project forwards requests to the real backend using `BACKEND_API_BASE_URL`.
+- Keep `frontend/.env.production` on `VITE_API_BASE_URL=/api`; if someone sets it to an absolute backend URL, the production browser flow is wrong.
+- Use explicit route files in `frontend/api/` for every public and admin backend endpoint. This repo intentionally avoids a catch-all Vercel API proxy because nested routes caused 404 and function invocation failures after deployment.
+- Current public proxy files are `frontend/api/health.ts`, `frontend/api/profile.ts`, `frontend/api/now.ts`, `frontend/api/lives.ts`, and `frontend/api/highlights.ts`.
+- Current admin proxy files are `frontend/api/admin/login.ts`, `frontend/api/admin/content.ts`, `frontend/api/admin/profile.ts`, `frontend/api/admin/now.ts`, `frontend/api/admin/lives.ts`, `frontend/api/admin/highlights.ts`, and `frontend/api/admin/lives/upload.ts`.
+- After a frontend deploy, verify the proxy chain through the frontend domain first: `GET /api/health`, then `POST /api/admin/login` with basic auth.
+- If frontend pages load but all `/api/*` requests fail, inspect the frontend Vercel functions first; if `/api/health` works but admin login fails, inspect backend admin env vars next.
 
 ## Build, Run, and Validation Commands
 
-Run all commands below from `backend/` unless noted otherwise.
+Run commands from the package directory they belong to.
 
-- Install dependencies: `npm install`
-- Start dev server with watch mode: `npm run dev`
-- Build TypeScript to `dist/`: `npm run build`
-- Start the compiled server: `npm run start`
-- Type-check without emitting files: `npx tsc --noEmit`
+- Backend install dependencies: `npm install` from `backend/`
+- Backend dev server: `npm run dev` from `backend/`
+- Backend build TypeScript to `dist/`: `npm run build` from `backend/`
+- Backend compiled server: `npm run start` from `backend/`
+- Backend type-check without emitting files: `npx tsc --noEmit` from `backend/`
+- Frontend install dependencies: `npm install` from `frontend/`
+- Frontend dev server: `npm run dev` from `frontend/`
+- Frontend production build: `npm run build` from `frontend/`
+- Frontend type-check: `npm run typecheck` from `frontend/`
 
 ## Lint Commands
 
@@ -76,10 +106,13 @@ Run all commands below from `backend/` unless noted otherwise.
 
 ## Manual Verification
 
-- Start the API locally with `npm run dev`.
-- Check the root endpoint: `GET /`
-- Check health endpoint: `GET /health`
-- Check public endpoints: `GET /profile`, `GET /now`, `GET /lives`, `GET /highlights`
+- Start the backend locally with `npm run dev` from `backend/`.
+- Start the frontend locally with `npm run dev` from `frontend/`.
+- Check backend root endpoint directly: `GET http://localhost:3000/`
+- Check backend health directly: `GET http://localhost:3000/health`
+- Check frontend proxy health: `GET http://localhost:5173/api/health`
+- Check public frontend proxy endpoints: `GET /api/profile`, `GET /api/now`, `GET /api/lives`, `GET /api/highlights`
+- Check admin login through the frontend proxy: `POST /api/admin/login` with basic auth.
 - When database credentials are absent, health should still respond and report database configuration accurately.
 
 ## Post-change Run Rule

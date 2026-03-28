@@ -187,11 +187,11 @@
 
 @layer utilities {
   .mobile-page-padding {
-    padding-bottom: calc(env(safe-area-inset-bottom) + 5rem);
+    padding-bottom: calc(env(safe-area-inset-bottom) + 4.4rem);
   }
 
   .mobile-dock-offset {
-    bottom: calc(env(safe-area-inset-bottom) + 0.6rem);
+    bottom: calc(env(safe-area-inset-bottom) + 0.45rem);
   }
 
   @media (min-width: 768px) {

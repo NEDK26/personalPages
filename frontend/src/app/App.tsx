@@ -325,7 +325,7 @@ function SectionShell({ title, eyebrow, sectionId, children }: SectionShellProps
   return (
     <section
       id={sectionId}
-      className="scroll-mt-24 rounded-[1.5rem] border border-zinc-200 bg-white/80 p-4 shadow-sm backdrop-blur-sm sm:rounded-[1.75rem] sm:p-6"
+      className="scroll-mt-24 rounded-[1.35rem] bg-white/72 p-4 backdrop-blur-sm sm:p-5 md:rounded-[1.75rem] md:border md:border-zinc-200 md:bg-white/80 md:p-6 md:shadow-sm"
     >
       <div className="mb-4 flex items-center justify-between gap-4 sm:mb-5">
         <div>
@@ -344,7 +344,7 @@ function ProfileCard({ profile, sectionId }: ProfileCardProps) {
   return (
     <section
       id={sectionId}
-      className="scroll-mt-24 flex flex-col items-center rounded-[1.75rem] border border-zinc-200 bg-white/80 p-5 text-center shadow-sm backdrop-blur-sm sm:rounded-[2rem] sm:p-8"
+      className="scroll-mt-24 flex flex-col items-center rounded-[1.5rem] bg-white/72 p-5 text-center backdrop-blur-sm sm:p-6 md:rounded-[2rem] md:border md:border-zinc-200 md:bg-white/80 md:p-8 md:shadow-sm"
     >
       <div className="mb-5 h-32 w-32 overflow-hidden rounded-full border-4 border-white bg-zinc-200 shadow-lg sm:mb-6 sm:h-44 sm:w-44 lg:h-48 lg:w-48">
         <img
@@ -1795,7 +1795,7 @@ function MobileBottomDock({ activeSection, onSelect }: MobileBottomDockProps) {
       <nav
         aria-label="Section navigation"
         role="tablist"
-        className="pointer-events-auto mx-auto max-w-sm rounded-[1.5rem] border border-zinc-300 bg-gradient-to-b from-white/92 to-zinc-100/92 p-1.5 shadow-[0_14px_40px_rgba(15,23,42,0.18)] backdrop-blur-2xl motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-6 motion-safe:duration-700"
+        className="pointer-events-auto mx-auto max-w-[19rem] rounded-[1.25rem] bg-white/80 p-1 shadow-[0_10px_24px_rgba(15,23,42,0.1)] backdrop-blur-xl motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-6 motion-safe:duration-700"
       >
         <div className="grid grid-cols-4 gap-1">
           {navigationItems.map((item) => {
@@ -1811,14 +1811,14 @@ function MobileBottomDock({ activeSection, onSelect }: MobileBottomDockProps) {
                 aria-selected={isActive}
                 aria-controls={`mobile-panel-${item.id}`}
                 onClick={() => onSelect(item.id)}
-                className={`flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-[1.1rem] px-1.5 py-1.5 text-[10px] transition-all duration-300 ${
+                className={`flex min-h-11 flex-col items-center justify-center gap-0 rounded-[0.95rem] px-1 py-1 text-[9px] transition-all duration-300 ${
                   isActive
-                    ? "bg-slate-950 text-white shadow-[0_6px_18px_rgba(15,23,42,0.18)]"
-                    : "text-slate-500 hover:bg-zinc-100 hover:text-slate-950"
+                    ? "bg-slate-950 text-white"
+                    : "text-slate-500 hover:bg-black/[0.04] hover:text-slate-950"
                 }`}
               >
                 <Icon className={`h-3.5 w-3.5 transition-transform duration-300 ${isActive ? "scale-105" : "scale-100"}`} />
-                <span className="tracking-[0.08em] uppercase">{item.mobileLabel}</span>
+                <span className="tracking-[0.12em] uppercase">{item.mobileLabel}</span>
               </button>
             );
           })}
@@ -2099,7 +2099,7 @@ function ReadyState({ data }: { data: PublicContent }) {
       </div>
 
       <div className="relative mx-auto flex max-w-5xl items-start justify-center lg:min-h-screen lg:items-center">
-        <div className="w-full rounded-[1.75rem] border border-white/70 bg-white/75 p-4 shadow-[0_24px_80px_rgba(15,23,42,0.12)] backdrop-blur-xl sm:rounded-[2rem] sm:p-6 md:p-10">
+        <div className="w-full md:rounded-[1.75rem] md:border md:border-white/70 md:bg-white/75 md:p-10 md:shadow-[0_24px_80px_rgba(15,23,42,0.12)] md:backdrop-blur-xl lg:rounded-[2rem]">
           <div className="mb-6 hidden md:flex md:justify-between">
             <FloatingSectionNav activeSection={activeSection} onSelect={handleSelectSection} />
             <div className="flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-slate-500">
@@ -2108,7 +2108,7 @@ function ReadyState({ data }: { data: PublicContent }) {
             </div>
           </div>
 
-          <div className="grid gap-4 sm:gap-5 md:hidden">
+          <div className="grid gap-3 sm:gap-4 md:hidden">
             <div
               key={`mobile-${activeSection}`}
               id={`mobile-panel-${activeSection}`}
