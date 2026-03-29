@@ -205,6 +205,34 @@ function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "资料加载失败，请稍后重试。";
 }
 
+function createCapturedAtValue() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function buildLifeMomentAltText(life: Pick<LifeMoment, "alt" | "title" | "description">) {
+  return life.alt.trim() || life.title.trim() || life.description.trim() || "生活照片";
+}
+
+function normalizeLifeMomentForSave(life: LifeMoment, sortOrder: number): LifeMoment {
+  return {
+    ...life,
+    title: life.title.trim(),
+    imageUrl: life.imageUrl.trim(),
+    thumbnailUrl: life.thumbnailUrl?.trim() || undefined,
+    alt: buildLifeMomentAltText(life),
+    location: life.location.trim(),
+    capturedAt: life.capturedAt.trim() || createCapturedAtValue(),
+    description: life.description.trim(),
+    width: life.width > 0 ? life.width : 1200,
+    height: life.height > 0 ? life.height : 1600,
+    sortOrder,
+  };
+}
+
+function normalizeLivesForSave(items: LifeMoment[]) {
+  return items.map((life, index) => normalizeLifeMomentForSave(life, index));
+}
+
 function opensNewTab(url: string) {
   return !url.startsWith("mailto:");
 }
@@ -244,7 +272,7 @@ function createEmptyLifeMoment() {
     imageUrl: "",
     alt: "",
     location: "",
-    capturedAt: new Date().toISOString().slice(0, 10),
+    capturedAt: createCapturedAtValue(),
     description: "",
     width: 1200,
     height: 1600,
@@ -586,17 +614,18 @@ function LivesSection({
 
   const slides = lives.map((life) => ({
     src: life.imageUrl,
-    alt: life.alt,
+    alt: buildLifeMomentAltText(life),
     width: life.width,
     height: life.height,
-    title: life.title,
+    title: life.title.trim() || "未命名",
     description: (
       <div className="space-y-3 text-left">
-        <div className="flex flex-wrap gap-2 text-xs uppercase tracking-[0.16em] text-white/75">
-          <span>{life.location}</span>
-          <span>{formatDate(life.capturedAt, { year: "numeric", month: "long", day: "numeric" })}</span>
-        </div>
-        <p className="text-sm leading-6 text-white/90 sm:text-base">{life.description}</p>
+        {life.capturedAt ? (
+          <div className="text-xs uppercase tracking-[0.16em] text-white/75">
+            {formatDate(life.capturedAt, { year: "numeric", month: "long", day: "numeric" })}
+          </div>
+        ) : null}
+        {life.description ? <p className="text-sm leading-6 text-white/90 sm:text-base">{life.description}</p> : null}
       </div>
     ),
   }));
@@ -608,20 +637,19 @@ function LivesSection({
           <button
             key={life.id}
             type="button"
-            aria-label={`查看 ${life.title}`}
+            aria-label={`查看 ${life.title.trim() || "未命名照片"}`}
             onClick={() => setSelectedLifeIndex(index)}
             className="group relative aspect-square overflow-hidden border border-zinc-200 bg-white/90 text-left shadow-sm transition-transform duration-300 hover:-translate-y-1 focus-visible:-translate-y-1 focus-visible:outline-hidden"
           >
             <img
               src={life.thumbnailUrl ?? life.imageUrl}
-              alt={life.alt}
+              alt={buildLifeMomentAltText(life)}
               loading="lazy"
               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
             />
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent opacity-100" />
             <div className="pointer-events-none absolute inset-x-0 bottom-0 p-3 text-white">
-              <p className="truncate text-sm">{life.title}</p>
-              <p className="truncate text-[11px] uppercase tracking-[0.14em] text-white/75">{life.location}</p>
+              <p className="truncate text-sm">{life.title.trim() || "未命名"}</p>
             </div>
           </button>
         ))}
@@ -994,21 +1022,6 @@ function AdminDialog({
     });
   }
 
-  function updateDraftLifeStatus(index: number, value: ContentStatus) {
-    setDraftLives((currentLives) => {
-      return currentLives.map((life, currentIndex) => {
-        if (currentIndex !== index) {
-          return life;
-        }
-
-        return {
-          ...life,
-          status: value,
-        };
-      });
-    });
-  }
-
   async function handleLifeImageSelect(lifeId: string, event: ChangeEvent<HTMLInputElement>) {
     const nextFile = event.target.files?.[0];
     event.target.value = "";
@@ -1039,6 +1052,8 @@ function AdminDialog({
             ...life,
             imageUrl: uploadedImage.url,
             thumbnailUrl: uploadedImage.thumbnailUrl ?? uploadedImage.url,
+            alt: buildLifeMomentAltText(life),
+            capturedAt: life.capturedAt || createCapturedAtValue(),
             width: preparedFile.width,
             height: preparedFile.height,
           };
@@ -1127,7 +1142,7 @@ function AdminDialog({
       const savedLives = await saveAdminLives(
         credentials.username,
         credentials.password,
-        normalizeSortOrder(draftLives),
+        normalizeLivesForSave(draftLives),
       );
 
       setSavedLivesState(savedLives);
@@ -1180,7 +1195,7 @@ function AdminDialog({
           ...draftNow,
           items: normalizeSortOrder(draftNow.items),
         },
-        lives: normalizeSortOrder(draftLives),
+        lives: normalizeLivesForSave(draftLives),
         highlights: normalizeSortOrder(draftHighlights),
         editingEnabled,
       });
@@ -1571,21 +1586,10 @@ function AdminDialog({
                           </div>
                         </div>
 
-                      <div className="grid gap-3 md:grid-cols-2">
-                        <input value={life.title} onChange={(event) => updateDraftLife(index, "title", event.target.value)} placeholder="标题" className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900" />
-                        <input value={life.location} onChange={(event) => updateDraftLife(index, "location", event.target.value)} placeholder="地点" className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900" />
-                        <select
-                          value={life.status}
-                          onChange={(event) => updateDraftLifeStatus(index, event.target.value as ContentStatus)}
-                          className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900"
-                        >
-                          {statusOptions.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </select>
-                        <div className="md:col-span-2 flex flex-wrap items-center gap-3">
+                      <div className="grid gap-3">
+                        <input value={life.title} onChange={(event) => updateDraftLife(index, "title", event.target.value)} placeholder="标题（必填）" className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900" />
+                        <textarea value={life.description} onChange={(event) => updateDraftLife(index, "description", event.target.value)} placeholder="文案（可选）" rows={4} className="rounded-[1.5rem] border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900" />
+                        <div className="flex flex-wrap items-center gap-3">
                           <input
                             ref={(node) => {
                               lifeImageInputRefs.current[life.id] = node;
@@ -1604,16 +1608,9 @@ function AdminDialog({
                             {uploadingLifeId === life.id ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
                             {uploadingLifeId === life.id ? "上传中..." : "上传"}
                           </button>
-                          <span className="text-xs text-slate-500">会同时生成缩略图和详情原图，详情支持缩放拖动查看</span>
+                          <span className="text-xs text-slate-500">会自动生成缩略图，详情可缩放拖动；日期自动记录为 {life.capturedAt || createCapturedAtValue()}</span>
                         </div>
-                        <input value={life.imageUrl} onChange={(event) => updateDraftLife(index, "imageUrl", event.target.value)} placeholder="图片地址或 /lives/xxx.jpg" className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900 md:col-span-2" />
-                        <input value={life.alt} onChange={(event) => updateDraftLife(index, "alt", event.target.value)} placeholder="图片 alt 文案" className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900 md:col-span-2" />
-                        <input value={life.capturedAt} onChange={(event) => updateDraftLife(index, "capturedAt", event.target.value)} placeholder="拍摄日期 YYYY-MM-DD" className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900" />
-                        <div className="grid grid-cols-2 gap-3">
-                          <input value={String(life.width)} onChange={(event) => updateDraftLife(index, "width", Number(event.target.value) || 0)} placeholder="宽度" className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900" />
-                          <input value={String(life.height)} onChange={(event) => updateDraftLife(index, "height", Number(event.target.value) || 0)} placeholder="高度" className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900" />
-                        </div>
-                        <textarea value={life.description} onChange={(event) => updateDraftLife(index, "description", event.target.value)} placeholder="描述" rows={4} className="rounded-[1.5rem] border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900 md:col-span-2" />
+                        {life.imageUrl ? <p className="text-xs text-slate-500">已上传图片</p> : <p className="text-xs text-slate-400">还没有图片，先上传一张照片</p>}
                       </div>
                     </section>
                   ))}

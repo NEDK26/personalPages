@@ -86,10 +86,10 @@ const baseLifeMomentSchema = z.object({
   title: z.string().trim().min(1),
   imageUrl: imageSourceSchema,
   thumbnailUrl: imageSourceSchema.optional(),
-  alt: z.string().trim().min(1),
-  location: z.string().trim().min(1),
+  alt: z.string().trim(),
+  location: z.string().trim(),
   capturedAt: z.string().trim().min(1),
-  description: z.string().trim().min(1),
+  description: z.string().trim(),
   width: z.number().int().positive(),
   height: z.number().int().positive(),
 });
