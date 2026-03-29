@@ -1,8 +1,6 @@
 const HEIC_FILE_EXTENSION_PATTERN = /\.(heic|heif)$/i;
 const MAX_FULL_IMAGE_SIZE_MB = 4;
 const MAX_FULL_IMAGE_EDGE = 2560;
-const MAX_THUMBNAIL_IMAGE_SIZE_MB = 0.25;
-const MAX_THUMBNAIL_IMAGE_EDGE = 480;
 const MAX_BACKEND_UPLOAD_BYTES = 10 * 1024 * 1024;
 
 interface CompressionPreset {
@@ -14,7 +12,6 @@ interface CompressionPreset {
 
 export interface PreparedLifeImageUpload {
   imageFile: File;
-  thumbnailFile: File;
   width: number;
   height: number;
 }
@@ -108,19 +105,11 @@ async function normalizeLifeImageFile(file: File) {
 
 export async function prepareLifeImageForUpload(file: File): Promise<PreparedLifeImageUpload> {
   const normalizedFile = await normalizeLifeImageFile(file);
-  const [imageFile, thumbnailFile] = await Promise.all([
-    compressImage(normalizedFile, {
-      maxSizeMB: MAX_FULL_IMAGE_SIZE_MB,
-      maxWidthOrHeight: MAX_FULL_IMAGE_EDGE,
-      initialQuality: 0.88,
-    }),
-    compressImage(normalizedFile, {
-      maxSizeMB: MAX_THUMBNAIL_IMAGE_SIZE_MB,
-      maxWidthOrHeight: MAX_THUMBNAIL_IMAGE_EDGE,
-      initialQuality: 0.74,
-      suffix: "-thumb",
-    }),
-  ]);
+  const imageFile = await compressImage(normalizedFile, {
+    maxSizeMB: MAX_FULL_IMAGE_SIZE_MB,
+    maxWidthOrHeight: MAX_FULL_IMAGE_EDGE,
+    initialQuality: 0.88,
+  });
 
   if (imageFile.size > MAX_BACKEND_UPLOAD_BYTES) {
     throw new Error("图片处理后仍超过 10MB，请先导出较小版本后再上传。");
@@ -130,7 +119,6 @@ export async function prepareLifeImageForUpload(file: File): Promise<PreparedLif
 
   return {
     imageFile,
-    thumbnailFile,
     width,
     height,
   };

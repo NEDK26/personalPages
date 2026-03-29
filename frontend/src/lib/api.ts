@@ -154,24 +154,33 @@ function getImageFileExtension(fileName: string, contentType: string) {
   return "jpg";
 }
 
-function buildLifeImageUploadPathname(file: File, variant: "full" | "thumb" = "full") {
+function buildLifeImageUploadPathname(file: File) {
   const lastDotIndex = file.name.lastIndexOf(".");
   const rawBaseName = lastDotIndex >= 0 ? file.name.slice(0, lastDotIndex) : file.name;
   const baseName = sanitizeFileNameSegment(rawBaseName);
   const extension = getImageFileExtension(file.name, file.type);
 
-  if (variant === "thumb") {
-    return `lives/thumbs/${baseName}.${extension}`;
-  }
-
   return `lives/${baseName}.${extension}`;
+}
+
+function buildLifeThumbnailPathname(pathname: string) {
+  const fileName = pathname.split("/").pop() ?? pathname;
+  const baseName = fileName.replace(/\.[^.]+$/, "");
+
+  return `lives/thumbs/${baseName}.webp`;
+}
+
+function buildBlobUrlFromPathname(blobUrl: string, pathname: string) {
+  const url = new URL(blobUrl);
+  url.pathname = `/${pathname}`;
+
+  return url.toString();
 }
 
 async function uploadAdminLifeImageThroughLegacyProxy(
   username: string,
   password: string,
   file: File,
-  thumbnailFile?: File,
 ): Promise<AdminLifeImageUploadResponse> {
   const formData = new FormData();
   formData.append("file", file);
@@ -195,10 +204,7 @@ async function uploadAdminLifeImageThroughLegacyProxy(
     throw new Error("图片上传响应格式不正确");
   }
 
-  return {
-    ...payload,
-    thumbnailUrl: thumbnailFile ? payload.url : payload.thumbnailUrl,
-  };
+  return payload;
 }
 
 function shouldUseLegacyBackendUpload() {
@@ -377,10 +383,9 @@ export async function uploadAdminLifeImage(
   username: string,
   password: string,
   file: File,
-  thumbnailFile?: File,
 ): Promise<AdminLifeImageUploadResponse> {
   if (shouldUseLegacyBackendUpload()) {
-    return uploadAdminLifeImageThroughLegacyProxy(username, password, file, thumbnailFile);
+    return uploadAdminLifeImageThroughLegacyProxy(username, password, file);
   }
 
   try {
@@ -398,22 +403,11 @@ export async function uploadAdminLifeImage(
       contentType: file.type || undefined,
       multipart: file.size > DIRECT_BLOB_MULTIPART_THRESHOLD_BYTES,
     });
-    let uploadedThumbnailBlob: { url: string } | null = null;
-
-    if (thumbnailFile) {
-      try {
-        uploadedThumbnailBlob = await upload(buildLifeImageUploadPathname(thumbnailFile, "thumb"), thumbnailFile, {
-          ...commonUploadOptions,
-          contentType: thumbnailFile.type || undefined,
-        });
-      } catch {
-        uploadedThumbnailBlob = null;
-      }
-    }
+    const thumbnailPathname = buildLifeThumbnailPathname(uploadedBlob.pathname);
 
     return {
       url: uploadedBlob.url,
-      thumbnailUrl: uploadedThumbnailBlob?.url,
+      thumbnailUrl: buildBlobUrlFromPathname(uploadedBlob.url, thumbnailPathname),
       pathname: uploadedBlob.pathname,
       contentType: uploadedBlob.contentType,
       size: file.size,

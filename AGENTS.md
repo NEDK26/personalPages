@@ -61,12 +61,12 @@ This file is for coding agents working in `/Users/minda66/Desktop/projects/demo-
 - Deploy `backend/` and `frontend/` as separate Vercel projects.
 - In production, the browser must call same-origin frontend routes like `/api/profile` and `/api/admin/login`; do not point the browser directly at the backend Vercel domain.
 - The frontend Vercel project forwards requests to the real backend using `BACKEND_API_BASE_URL`.
-- `POST /api/admin/lives/upload` is special: the browser first asks the frontend Vercel route for a client upload token, then uploads the image directly to Vercel Blob without proxying the binary file through backend.
+- `POST /api/admin/lives/upload` is special: the browser first asks the frontend Vercel route for a client upload token, then uploads the image directly to Vercel Blob without proxying the binary file through backend; the frontend Vercel route then generates the square thumbnail server-side after upload completes.
 - Keep `frontend/.env.production` on `VITE_API_BASE_URL=/api`; if someone sets it to an absolute backend URL, the production browser flow is wrong.
 - Use explicit route files in `frontend/api/` for every public and admin backend endpoint. This repo intentionally avoids a catch-all Vercel API proxy because nested routes caused 404 and function invocation failures after deployment.
 - Current public proxy files are `frontend/api/health.ts`, `frontend/api/profile.ts`, `frontend/api/now.ts`, `frontend/api/lives.ts`, and `frontend/api/highlights.ts`.
 - Current admin proxy files are `frontend/api/admin/login.ts`, `frontend/api/admin/content.ts`, `frontend/api/admin/profile.ts`, `frontend/api/admin/now.ts`, `frontend/api/admin/lives.ts`, and `frontend/api/admin/highlights.ts`.
-- `frontend/api/admin/lives/upload.ts` is the frontend-side Vercel Blob client-upload token route; it authenticates through backend admin login and issues direct upload permissions for the browser.
+- `frontend/api/admin/lives/upload.ts` is the frontend-side Vercel Blob client-upload token route; it authenticates through backend admin login, issues direct upload permissions for the browser, and generates Lives thumbnails after uploads finish.
 - After a frontend deploy, verify the proxy chain through the frontend domain first: `GET /api/health`, then `POST /api/admin/login` with basic auth.
 - If frontend pages load but all `/api/*` requests fail, inspect the frontend Vercel functions first; if `/api/health` works but admin login fails, inspect backend admin env vars next.
 

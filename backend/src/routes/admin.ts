@@ -1,5 +1,6 @@
 import { put } from "@vercel/blob";
 import { Hono } from "hono";
+import sharp from "sharp";
 
 import { env } from "../config/env";
 import {
@@ -22,6 +23,8 @@ import {
 
 const adminRouter = new Hono();
 const MAX_LIFE_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
+const THUMBNAIL_SIZE = 640;
+const THUMBNAIL_CONTENT_TYPE = "image/webp";
 
 function createUploadUnavailableResponse() {
   return new Response(
@@ -76,6 +79,36 @@ function createLifeImagePathname(fileName: string, contentType: string) {
   const extension = getImageExtension(fileName, contentType);
 
   return `lives/${baseName}${extension}`;
+}
+
+function createLifeThumbnailPathname(pathname: string) {
+  const fileName = pathname.split("/").pop() ?? pathname;
+  const baseName = fileName.replace(/\.[^.]+$/, "");
+
+  return `lives/thumbs/${baseName}.webp`;
+}
+
+function createBlobUrlWithPathname(blobUrl: string, pathname: string) {
+  const url = new URL(blobUrl);
+  url.pathname = `/${pathname}`;
+
+  return url.toString();
+}
+
+async function createLifeThumbnailBuffer(file: File) {
+  const fileBuffer = Buffer.from(await file.arrayBuffer());
+
+  return sharp(fileBuffer)
+    .rotate()
+    .resize(THUMBNAIL_SIZE, THUMBNAIL_SIZE, {
+      fit: "cover",
+      position: sharp.strategy.attention,
+    })
+    .webp({
+      quality: 80,
+      effort: 4,
+    })
+    .toBuffer();
 }
 
 function parseBasicAuthHeader(authorizationHeader: string | undefined) {
@@ -339,9 +372,20 @@ adminRouter.post("/admin/lives/upload", async (c) => {
       contentType: file.type,
       token: env.BLOB_READ_WRITE_TOKEN,
     });
+    const thumbnailPathname = createLifeThumbnailPathname(uploadedBlob.pathname);
+    const thumbnailBuffer = await createLifeThumbnailBuffer(file);
+
+    await put(thumbnailPathname, thumbnailBuffer, {
+      access: "public",
+      allowOverwrite: true,
+      cacheControlMaxAge: 60 * 60 * 24 * 30,
+      contentType: THUMBNAIL_CONTENT_TYPE,
+      token: env.BLOB_READ_WRITE_TOKEN,
+    });
 
     return c.json({
       url: uploadedBlob.url,
+      thumbnailUrl: createBlobUrlWithPathname(uploadedBlob.url, thumbnailPathname),
       pathname: uploadedBlob.pathname,
       contentType: uploadedBlob.contentType,
       size: file.size,

@@ -645,6 +645,11 @@ function LivesSection({
               src={life.thumbnailUrl ?? life.imageUrl}
               alt={buildLifeMomentAltText(life)}
               loading="lazy"
+              onError={(event) => {
+                if (event.currentTarget.src !== life.imageUrl) {
+                  event.currentTarget.src = life.imageUrl;
+                }
+              }}
               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
             />
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent opacity-100" />
@@ -1039,7 +1044,6 @@ function AdminDialog({
         credentials.username,
         credentials.password,
         preparedFile.imageFile,
-        preparedFile.thumbnailFile,
       );
 
       setDraftLives((currentLives) =>
@@ -1608,7 +1612,7 @@ function AdminDialog({
                             {uploadingLifeId === life.id ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
                             {uploadingLifeId === life.id ? "上传中..." : "上传"}
                           </button>
-                          <span className="text-xs text-slate-500">会自动生成缩略图，详情可缩放拖动；日期自动记录为 {life.capturedAt || createCapturedAtValue()}</span>
+                          <span className="text-xs text-slate-500">服务器会自动生成缩略图；日期自动记录为 {life.capturedAt || createCapturedAtValue()}</span>
                         </div>
                         {life.imageUrl ? <p className="text-xs text-slate-500">已上传图片</p> : <p className="text-xs text-slate-400">还没有图片，先上传一张照片</p>}
                       </div>
