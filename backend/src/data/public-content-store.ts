@@ -85,6 +85,7 @@ const baseLifeMomentSchema = z.object({
   id: z.string().trim().min(1),
   title: z.string().trim().min(1),
   imageUrl: imageSourceSchema,
+  thumbnailUrl: imageSourceSchema.optional(),
   alt: z.string().trim().min(1),
   location: z.string().trim().min(1),
   capturedAt: z.string().trim().min(1),
@@ -132,6 +133,7 @@ const lifeMomentRowSchema = z.object({
   id: z.string(),
   title: z.string(),
   image_url: z.string(),
+  thumbnail_url: z.string().nullable().optional(),
   alt: z.string(),
   location: z.string(),
   captured_at: z.string(),
@@ -213,6 +215,22 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
+async function ensureLifeMomentThumbnailColumn() {
+  if (!db) {
+    return;
+  }
+
+  try {
+    await db.execute("ALTER TABLE life_moments ADD COLUMN thumbnail_url TEXT");
+  } catch (error) {
+    if (error instanceof Error && /duplicate column|already exists/i.test(error.message)) {
+      return;
+    }
+
+    throw error;
+  }
+}
+
 async function ensureContentStorage() {
   if (!db) {
     return;
@@ -243,6 +261,7 @@ async function ensureContentStorage() {
           id TEXT PRIMARY KEY,
           title TEXT NOT NULL,
           image_url TEXT NOT NULL,
+          thumbnail_url TEXT,
           alt TEXT NOT NULL,
           location TEXT NOT NULL,
           captured_at TEXT NOT NULL,
@@ -255,6 +274,7 @@ async function ensureContentStorage() {
           updated_at TEXT NOT NULL
         )
       `);
+      await ensureLifeMomentThumbnailColumn();
       await db.execute(`
         CREATE TABLE IF NOT EXISTS projects (
           id TEXT PRIMARY KEY,
@@ -512,6 +532,7 @@ function mapLifeMomentRowToItem(row: z.infer<typeof lifeMomentRowSchema>): LifeM
     id: row.id,
     title: row.title,
     imageUrl: row.image_url,
+    thumbnailUrl: row.thumbnail_url ?? undefined,
     alt: row.alt,
     location: row.location,
     capturedAt: row.captured_at,
@@ -576,7 +597,7 @@ async function readLifeMoments(includeAll: boolean) {
 
   const result = await db.execute({
     sql: `
-      SELECT id, title, image_url, alt, location, captured_at, description, width, height, status, sort_order, created_at, updated_at
+      SELECT id, title, image_url, thumbnail_url, alt, location, captured_at, description, width, height, status, sort_order, created_at, updated_at
       FROM life_moments
       ${includeAll ? "" : "WHERE status = 'published'"}
       ORDER BY sort_order ASC, updated_at ASC
@@ -689,13 +710,14 @@ function createReplaceLifeMomentStatements(items: LifeMoment[], timestamp: strin
     },
     ...items.map((item) => ({
       sql: `
-        INSERT INTO life_moments (id, title, image_url, alt, location, captured_at, description, width, height, status, sort_order, created_at, updated_at)
-        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)
+        INSERT INTO life_moments (id, title, image_url, thumbnail_url, alt, location, captured_at, description, width, height, status, sort_order, created_at, updated_at)
+        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)
       `,
       args: [
         item.id,
         item.title,
         item.imageUrl,
+        item.thumbnailUrl ?? null,
         item.alt,
         item.location,
         item.capturedAt,
@@ -751,13 +773,14 @@ async function replaceLifeMoments(items: LifeMoment[]) {
   for (const item of items) {
     await db.execute({
       sql: `
-        INSERT INTO life_moments (id, title, image_url, alt, location, captured_at, description, width, height, status, sort_order, created_at, updated_at)
-        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)
+        INSERT INTO life_moments (id, title, image_url, thumbnail_url, alt, location, captured_at, description, width, height, status, sort_order, created_at, updated_at)
+        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)
       `,
       args: [
         item.id,
         item.title,
         item.imageUrl,
+        item.thumbnailUrl ?? null,
         item.alt,
         item.location,
         item.capturedAt,

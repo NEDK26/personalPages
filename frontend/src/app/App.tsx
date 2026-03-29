@@ -3,9 +3,6 @@ import {
   ArrowDown,
   ArrowUp,
   BriefcaseBusiness,
-  CalendarDays,
-  ChevronLeft,
-  ChevronRight,
   Clock3,
   ExternalLink,
   GraduationCap,
@@ -25,9 +22,13 @@ import {
   UserRound,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import Masonry, { ResponsiveMasonry } from "react-responsive-masonry";
 import { useEffect, useRef, useState } from "react";
 import type { ChangeEvent, FormEvent, ReactNode, TouchEvent } from "react";
+import Lightbox from "yet-another-react-lightbox";
+import Captions from "yet-another-react-lightbox/plugins/captions";
+import Zoom from "yet-another-react-lightbox/plugins/zoom";
+import "yet-another-react-lightbox/plugins/captions.css";
+import "yet-another-react-lightbox/styles.css";
 
 import avatarImage from "../assets/avatar.jpg";
 import {
@@ -57,7 +58,7 @@ import {
   saveAdminProfile,
   uploadAdminLifeImage,
 } from "../lib/api";
-import { prepareLifeImageForUpload, readImageDimensions } from "../lib/life-image";
+import { prepareLifeImageForUpload } from "../lib/life-image";
 import type {
   ContentStatus,
   HighlightItem,
@@ -330,11 +331,14 @@ function ProfileCard({ profile, sectionId }: ProfileCardProps) {
       id={sectionId}
       className="scroll-mt-24 flex flex-col items-center rounded-[1.5rem] bg-white/72 px-4 py-4 text-center backdrop-blur-sm sm:px-6 sm:py-6 md:grid md:grid-cols-[11rem_minmax(0,1fr)] md:items-center md:gap-8 md:rounded-[2rem] md:border md:border-zinc-200 md:bg-white/80 md:px-8 md:py-8 md:text-left md:shadow-sm lg:grid-cols-[12rem_minmax(0,1fr)] lg:px-10"
     >
-      <div className="mb-4 h-36 w-36 overflow-hidden rounded-full border-4 border-white bg-zinc-200 shadow-lg sm:mb-5 sm:h-40 sm:w-40 md:mb-0 md:h-44 md:w-44 lg:h-48 lg:w-48">
+      <div className="mb-4 h-36 w-36 shrink-0 overflow-hidden rounded-full border-4 border-white bg-zinc-200 shadow-lg sm:mb-5 sm:h-40 sm:w-40 md:mb-0 md:h-44 md:w-44 lg:h-48 lg:w-48">
         <img
           src={avatarImage}
           alt={`${profile.name} avatar`}
-          className="h-full w-full object-cover"
+          loading="eager"
+          fetchPriority="high"
+          draggable={false}
+          className="h-full w-full object-cover object-center"
         />
       </div>
 
@@ -547,46 +551,7 @@ function LivesSection({
   sectionId,
 }: LivesSectionProps) {
   const [selectedLifeIndex, setSelectedLifeIndex] = useState<number | null>(null);
-  const selectedLife = selectedLifeIndex === null ? null : lives[selectedLifeIndex];
-  const hasPreviousLife = selectedLifeIndex !== null && selectedLifeIndex > 0;
-  const hasNextLife = selectedLifeIndex !== null && selectedLifeIndex < lives.length - 1;
   const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (selectedLifeIndex === null) {
-      return;
-    }
-
-    function handleKeydown(event: KeyboardEvent) {
-      if (event.key === "ArrowLeft" && hasPreviousLife) {
-        event.preventDefault();
-        setSelectedLifeIndex((currentIndex) => {
-          if (currentIndex === null || currentIndex <= 0) {
-            return currentIndex;
-          }
-
-          return currentIndex - 1;
-        });
-      }
-
-      if (event.key === "ArrowRight" && hasNextLife) {
-        event.preventDefault();
-        setSelectedLifeIndex((currentIndex) => {
-          if (currentIndex === null || currentIndex >= lives.length - 1) {
-            return currentIndex;
-          }
-
-          return currentIndex + 1;
-        });
-      }
-    }
-
-    window.addEventListener("keydown", handleKeydown);
-
-    return () => {
-      window.removeEventListener("keydown", handleKeydown);
-    };
-  }, [hasNextLife, hasPreviousLife, lives.length, selectedLifeIndex]);
 
   useEffect(() => {
     if (!pageInfo.hasMore || isLoadingMore || Boolean(loadMoreError)) {
@@ -619,145 +584,93 @@ function LivesSection({
     };
   }, [isLoadingMore, loadMoreError, onLoadMore, pageInfo.hasMore, lives.length]);
 
-  function handleOpenLife(index: number) {
-    setSelectedLifeIndex(index);
-  }
-
-  function handleShowPreviousLife() {
-    setSelectedLifeIndex((currentIndex) => {
-      if (currentIndex === null || currentIndex <= 0) {
-        return currentIndex;
-      }
-
-      return currentIndex - 1;
-    });
-  }
-
-  function handleShowNextLife() {
-    setSelectedLifeIndex((currentIndex) => {
-      if (currentIndex === null || currentIndex >= lives.length - 1) {
-        return currentIndex;
-      }
-
-      return currentIndex + 1;
-    });
-  }
+  const slides = lives.map((life) => ({
+    src: life.imageUrl,
+    alt: life.alt,
+    width: life.width,
+    height: life.height,
+    title: life.title,
+    description: (
+      <div className="space-y-3 text-left">
+        <div className="flex flex-wrap gap-2 text-xs uppercase tracking-[0.16em] text-white/75">
+          <span>{life.location}</span>
+          <span>{formatDate(life.capturedAt, { year: "numeric", month: "long", day: "numeric" })}</span>
+        </div>
+        <p className="text-sm leading-6 text-white/90 sm:text-base">{life.description}</p>
+      </div>
+    ),
+  }));
 
   return (
     <SectionShell title="Lives" eyebrow="Photo Journal" sectionId={sectionId}>
-      <Dialog open={selectedLife !== null} onOpenChange={(open) => !open && setSelectedLifeIndex(null)}>
-        <ResponsiveMasonry columnsCountBreakPoints={{ 0: 2, 768: 3, 1200: 4 }}>
-          <Masonry gutter="6px">
-            {lives.map((life, index) => (
-              <button
-                key={life.id}
-                type="button"
-                aria-label={`查看 ${life.title}`}
-                onClick={() => handleOpenLife(index)}
-                className="group relative block w-full overflow-hidden border border-zinc-200 bg-white/85 text-left shadow-sm transition-transform duration-300 hover:-translate-y-1 focus-visible:-translate-y-1 focus-visible:outline-hidden"
-              >
-                <img
-                  src={life.imageUrl}
-                  alt={life.alt}
-                  width={life.width}
-                  height={life.height}
-                  loading="lazy"
-                  className="h-auto w-full object-cover"
-                />
-                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-visible:opacity-100" />
-              </button>
-            ))}
-          </Masonry>
-        </ResponsiveMasonry>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+        {lives.map((life, index) => (
+          <button
+            key={life.id}
+            type="button"
+            aria-label={`查看 ${life.title}`}
+            onClick={() => setSelectedLifeIndex(index)}
+            className="group relative aspect-square overflow-hidden border border-zinc-200 bg-white/90 text-left shadow-sm transition-transform duration-300 hover:-translate-y-1 focus-visible:-translate-y-1 focus-visible:outline-hidden"
+          >
+            <img
+              src={life.thumbnailUrl ?? life.imageUrl}
+              alt={life.alt}
+              loading="lazy"
+              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+            />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent opacity-100" />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 p-3 text-white">
+              <p className="truncate text-sm">{life.title}</p>
+              <p className="truncate text-[11px] uppercase tracking-[0.14em] text-white/75">{life.location}</p>
+            </div>
+          </button>
+        ))}
+      </div>
 
-        {(pageInfo.hasMore || isLoadingMore || loadMoreError) ? (
-          <div className="mt-4 flex flex-col items-center gap-3">
-            <div ref={loadMoreSentinelRef} className="h-1 w-full" />
+      {(pageInfo.hasMore || isLoadingMore || loadMoreError) ? (
+        <div className="mt-4 flex flex-col items-center gap-3">
+          <div ref={loadMoreSentinelRef} className="h-1 w-full" />
 
-            {isLoadingMore ? (
-              <div className="inline-flex items-center gap-2 rounded-full border border-zinc-300 bg-white/85 px-4 py-2 text-sm text-slate-700">
-                <LoaderCircle className="h-4 w-4 animate-spin" />
-                正在加载更多照片...
-              </div>
-            ) : null}
-
-            {loadMoreError ? (
-              <div className="flex flex-col items-center gap-2">
-                <p className="text-sm text-rose-500">{loadMoreError}</p>
-                <button
-                  type="button"
-                  onClick={onLoadMore}
-                  className="rounded-full border border-zinc-300 bg-white/85 px-4 py-2 text-sm text-slate-800 transition-colors hover:bg-white hover:text-slate-950"
-                >
-                  重新尝试
-                </button>
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-
-        <DialogContent className="max-w-[calc(100%-1rem)] overflow-hidden rounded-none border-zinc-200 bg-white/98 p-0 shadow-[0_24px_80px_rgba(15,23,42,0.16)] sm:max-w-4xl">
-          {selectedLife ? (
-            <div className="grid gap-0 md:grid-cols-[minmax(0,1.25fr)_minmax(280px,0.75fr)]">
-              <div className="relative border-b border-zinc-200 bg-zinc-100/80 md:border-r md:border-b-0">
-                <img
-                  src={selectedLife.imageUrl}
-                  alt={selectedLife.alt}
-                  width={selectedLife.width}
-                  height={selectedLife.height}
-                  className="h-full min-h-[320px] w-full object-cover md:min-h-[640px]"
-                />
-
-                <button
-                  type="button"
-                  aria-label="查看上一张照片"
-                  onClick={handleShowPreviousLife}
-                  disabled={!hasPreviousLife}
-                  className="absolute left-3 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-none border border-zinc-300 bg-white/90 text-slate-900 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-35"
-                >
-                  <ChevronLeft className="h-5 w-5" />
-                </button>
-
-                <button
-                  type="button"
-                  aria-label="查看下一张照片"
-                  onClick={handleShowNextLife}
-                  disabled={!hasNextLife}
-                  className="absolute right-3 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-none border border-zinc-300 bg-white/90 text-slate-900 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-35"
-                >
-                  <ChevronRight className="h-5 w-5" />
-                </button>
-              </div>
-
-              <div className="flex flex-col justify-between p-5 sm:p-6">
-                <DialogHeader className="text-left">
-                  <div className="text-sm uppercase tracking-[0.24em] text-slate-500">
-                    {String((selectedLifeIndex ?? 0) + 1).padStart(2, "0")} / {String(lives.length).padStart(2, "0")}
-                  </div>
-                  <DialogTitle className="text-2xl leading-tight text-slate-950">{selectedLife.title}</DialogTitle>
-                  <div className="flex flex-wrap gap-2 text-sm text-slate-600">
-                    <span className="inline-flex items-center gap-1 rounded-full bg-zinc-200 px-3 py-1">
-                      <MapPin className="h-4 w-4" />
-                      {selectedLife.location}
-                    </span>
-                    <span className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 shadow-sm">
-                      <CalendarDays className="h-4 w-4" />
-                      {formatDate(selectedLife.capturedAt, {
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      })}
-                    </span>
-                  </div>
-                  <DialogDescription className="text-base leading-7 text-slate-600">
-                    {selectedLife.description}
-                  </DialogDescription>
-                </DialogHeader>
-              </div>
+          {isLoadingMore ? (
+            <div className="inline-flex items-center gap-2 rounded-full border border-zinc-300 bg-white/85 px-4 py-2 text-sm text-slate-700">
+              <LoaderCircle className="h-4 w-4 animate-spin" />
+              正在加载更多照片...
             </div>
           ) : null}
-        </DialogContent>
-      </Dialog>
+
+          {loadMoreError ? (
+            <div className="flex flex-col items-center gap-2">
+              <p className="text-sm text-rose-500">{loadMoreError}</p>
+              <button
+                type="button"
+                onClick={onLoadMore}
+                className="rounded-full border border-zinc-300 bg-white/85 px-4 py-2 text-sm text-slate-800 transition-colors hover:bg-white hover:text-slate-950"
+              >
+                重新尝试
+              </button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      <Lightbox
+        open={selectedLifeIndex !== null}
+        close={() => setSelectedLifeIndex(null)}
+        index={selectedLifeIndex ?? 0}
+        slides={slides}
+        plugins={[Captions, Zoom]}
+        captions={{ descriptionTextAlign: "start" }}
+        carousel={{ finite: lives.length <= 1, imageFit: "contain" }}
+        zoom={{ maxZoomPixelRatio: 4, scrollToZoom: false }}
+        on={{
+          view: ({ index }) => setSelectedLifeIndex(index),
+        }}
+        styles={{
+          container: {
+            backgroundColor: "rgba(9, 9, 11, 0.92)",
+          },
+        }}
+      />
     </SectionShell>
   );
 }
@@ -1109,10 +1022,12 @@ function AdminDialog({
 
     try {
       const preparedFile = await prepareLifeImageForUpload(nextFile);
-      const [dimensions, uploadedImage] = await Promise.all([
-        readImageDimensions(preparedFile),
-        uploadAdminLifeImage(credentials.username, credentials.password, preparedFile),
-      ]);
+      const uploadedImage = await uploadAdminLifeImage(
+        credentials.username,
+        credentials.password,
+        preparedFile.imageFile,
+        preparedFile.thumbnailFile,
+      );
 
       setDraftLives((currentLives) =>
         currentLives.map((life) => {
@@ -1123,8 +1038,9 @@ function AdminDialog({
           return {
             ...life,
             imageUrl: uploadedImage.url,
-            width: dimensions.width,
-            height: dimensions.height,
+            thumbnailUrl: uploadedImage.thumbnailUrl ?? uploadedImage.url,
+            width: preparedFile.width,
+            height: preparedFile.height,
           };
         }),
       );
@@ -1688,7 +1604,7 @@ function AdminDialog({
                             {uploadingLifeId === life.id ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
                             {uploadingLifeId === life.id ? "上传中..." : "上传"}
                           </button>
-                          <span className="text-xs text-slate-500">支持手机实况照片，上传时会自动提取静态图并尽量保留画质压缩</span>
+                          <span className="text-xs text-slate-500">会同时生成缩略图和详情原图，详情支持缩放拖动查看</span>
                         </div>
                         <input value={life.imageUrl} onChange={(event) => updateDraftLife(index, "imageUrl", event.target.value)} placeholder="图片地址或 /lives/xxx.jpg" className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900 md:col-span-2" />
                         <input value={life.alt} onChange={(event) => updateDraftLife(index, "alt", event.target.value)} placeholder="图片 alt 文案" className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900 md:col-span-2" />

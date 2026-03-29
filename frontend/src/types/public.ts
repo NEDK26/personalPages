@@ -43,6 +43,7 @@ export interface LifeMoment {
   id: string;
   title: string;
   imageUrl: string;
+  thumbnailUrl?: string;
   alt: string;
   location: string;
   capturedAt: string;
@@ -90,6 +91,7 @@ export interface AdminContentResponse {
 
 export interface AdminLifeImageUploadResponse {
   url: string;
+  thumbnailUrl?: string;
   pathname: string;
   contentType: string;
   size: number;
@@ -197,6 +199,7 @@ function isLifeMoment(value: unknown): value is LifeMoment {
     typeof value.id === "string" &&
     typeof value.title === "string" &&
     typeof value.imageUrl === "string" &&
+    (value.thumbnailUrl === undefined || typeof value.thumbnailUrl === "string") &&
     typeof value.alt === "string" &&
     typeof value.location === "string" &&
     typeof value.capturedAt === "string" &&
@@ -280,6 +283,7 @@ export function isAdminLifeImageUploadResponse(value: unknown): value is AdminLi
 
   return (
     typeof value.url === "string" &&
+    (value.thumbnailUrl === undefined || typeof value.thumbnailUrl === "string") &&
     typeof value.pathname === "string" &&
     typeof value.contentType === "string" &&
     isFiniteNumber(value.size) &&

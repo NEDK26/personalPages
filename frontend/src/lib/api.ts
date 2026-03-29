@@ -154,11 +154,15 @@ function getImageFileExtension(fileName: string, contentType: string) {
   return "jpg";
 }
 
-function buildLifeImageUploadPathname(file: File) {
+function buildLifeImageUploadPathname(file: File, variant: "full" | "thumb" = "full") {
   const lastDotIndex = file.name.lastIndexOf(".");
   const rawBaseName = lastDotIndex >= 0 ? file.name.slice(0, lastDotIndex) : file.name;
   const baseName = sanitizeFileNameSegment(rawBaseName);
   const extension = getImageFileExtension(file.name, file.type);
+
+  if (variant === "thumb") {
+    return `lives/thumbs/${baseName}.${extension}`;
+  }
 
   return `lives/${baseName}.${extension}`;
 }
@@ -167,6 +171,7 @@ async function uploadAdminLifeImageThroughLegacyProxy(
   username: string,
   password: string,
   file: File,
+  thumbnailFile?: File,
 ): Promise<AdminLifeImageUploadResponse> {
   const formData = new FormData();
   formData.append("file", file);
@@ -190,7 +195,10 @@ async function uploadAdminLifeImageThroughLegacyProxy(
     throw new Error("图片上传响应格式不正确");
   }
 
-  return payload;
+  return {
+    ...payload,
+    thumbnailUrl: thumbnailFile ? payload.url : payload.thumbnailUrl,
+  };
 }
 
 function shouldUseLegacyBackendUpload() {
@@ -369,26 +377,43 @@ export async function uploadAdminLifeImage(
   username: string,
   password: string,
   file: File,
+  thumbnailFile?: File,
 ): Promise<AdminLifeImageUploadResponse> {
   if (shouldUseLegacyBackendUpload()) {
-    return uploadAdminLifeImageThroughLegacyProxy(username, password, file);
+    return uploadAdminLifeImageThroughLegacyProxy(username, password, file, thumbnailFile);
   }
 
   try {
     const { upload } = await import("@vercel/blob/client");
-    const uploadedBlob = await upload(buildLifeImageUploadPathname(file), file, {
-      access: "public",
-      contentType: file.type || undefined,
+    const commonUploadOptions = {
+      access: "public" as const,
       handleUploadUrl: buildApiUrl("/admin/lives/upload"),
       headers: {
         Accept: "application/json",
         Authorization: createBasicAuthHeader(username, password),
       },
+    };
+    const uploadedBlob = await upload(buildLifeImageUploadPathname(file), file, {
+      ...commonUploadOptions,
+      contentType: file.type || undefined,
       multipart: file.size > DIRECT_BLOB_MULTIPART_THRESHOLD_BYTES,
     });
+    let uploadedThumbnailBlob: { url: string } | null = null;
+
+    if (thumbnailFile) {
+      try {
+        uploadedThumbnailBlob = await upload(buildLifeImageUploadPathname(thumbnailFile, "thumb"), thumbnailFile, {
+          ...commonUploadOptions,
+          contentType: thumbnailFile.type || undefined,
+        });
+      } catch {
+        uploadedThumbnailBlob = null;
+      }
+    }
 
     return {
       url: uploadedBlob.url,
+      thumbnailUrl: uploadedThumbnailBlob?.url,
       pathname: uploadedBlob.pathname,
       contentType: uploadedBlob.contentType,
       size: file.size,

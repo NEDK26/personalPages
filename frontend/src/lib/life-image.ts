@@ -1,16 +1,53 @@
 const HEIC_FILE_EXTENSION_PATTERN = /\.(heic|heif)$/i;
-const MAX_UPLOAD_IMAGE_SIZE_MB = 4;
-const MAX_UPLOAD_IMAGE_EDGE = 2560;
+const MAX_FULL_IMAGE_SIZE_MB = 4;
+const MAX_FULL_IMAGE_EDGE = 2560;
+const MAX_THUMBNAIL_IMAGE_SIZE_MB = 0.25;
+const MAX_THUMBNAIL_IMAGE_EDGE = 480;
 const MAX_BACKEND_UPLOAD_BYTES = 10 * 1024 * 1024;
+
+interface CompressionPreset {
+  maxSizeMB: number;
+  maxWidthOrHeight: number;
+  initialQuality: number;
+  suffix?: string;
+}
+
+export interface PreparedLifeImageUpload {
+  imageFile: File;
+  thumbnailFile: File;
+  width: number;
+  height: number;
+}
 
 function isHeicLikeFile(file: File) {
   return file.type === "image/heic" || file.type === "image/heif" || HEIC_FILE_EXTENSION_PATTERN.test(file.name);
 }
 
-function buildFileName(fileName: string, nextExtension: string) {
-  const baseName = fileName.replace(/\.[^.]+$/, "").trim();
+function getCompressionFileType(file: File) {
+  if (file.type === "image/png" || file.type === "image/webp" || file.type === "image/jpeg") {
+    return file.type;
+  }
 
-  return `${baseName || "life-image"}.${nextExtension}`;
+  return "image/jpeg";
+}
+
+function getFileExtensionFromType(contentType: string) {
+  if (contentType === "image/png") {
+    return "png";
+  }
+
+  if (contentType === "image/webp") {
+    return "webp";
+  }
+
+  return "jpg";
+}
+
+function buildFileName(fileName: string, contentType: string, suffix = "") {
+  const baseName = fileName.replace(/\.[^.]+$/, "").trim();
+  const extension = getFileExtensionFromType(contentType);
+
+  return `${baseName || "life-image"}${suffix}.${extension}`;
 }
 
 async function convertHeicToJpeg(file: File) {
@@ -34,48 +71,69 @@ async function convertHeicToJpeg(file: File) {
     throw new Error("实况照片转换失败，请换一张照片重试。");
   }
 
-  return new File([normalizedBlob], buildFileName(file.name, "jpg"), {
+  return new File([normalizedBlob], buildFileName(file.name, "image/jpeg"), {
     type: "image/jpeg",
     lastModified: Date.now(),
   });
 }
 
-function getCompressionFileType(file: File) {
-  if (file.type === "image/png" || file.type === "image/webp" || file.type === "image/jpeg") {
-    return file.type;
-  }
-
-  return "image/jpeg";
-}
-
-export async function prepareLifeImageForUpload(file: File) {
-  if ((!file.type || !file.type.startsWith("image/")) && !isHeicLikeFile(file)) {
-    throw new Error("请选择图片文件后再上传。");
-  }
-
-  const normalizedFile = isHeicLikeFile(file) ? await convertHeicToJpeg(file) : file;
-
-  let processedFile: File;
-
+async function compressImage(file: File, preset: CompressionPreset) {
   try {
     const { default: imageCompression } = await import("browser-image-compression");
-
-    processedFile = await imageCompression(normalizedFile, {
-      maxSizeMB: MAX_UPLOAD_IMAGE_SIZE_MB,
-      maxWidthOrHeight: MAX_UPLOAD_IMAGE_EDGE,
+    const contentType = getCompressionFileType(file);
+    const compressedFile = await imageCompression(file, {
+      maxSizeMB: preset.maxSizeMB,
+      maxWidthOrHeight: preset.maxWidthOrHeight,
       useWebWorker: true,
-      initialQuality: 0.88,
-      fileType: getCompressionFileType(normalizedFile),
+      initialQuality: preset.initialQuality,
+      fileType: contentType,
+    });
+
+    return new File([compressedFile], buildFileName(file.name, contentType, preset.suffix), {
+      type: contentType,
+      lastModified: Date.now(),
     });
   } catch {
     throw new Error("图片处理失败，请换一张照片或稍后重试。");
   }
+}
 
-  if (processedFile.size > MAX_BACKEND_UPLOAD_BYTES) {
+async function normalizeLifeImageFile(file: File) {
+  if ((!file.type || !file.type.startsWith("image/")) && !isHeicLikeFile(file)) {
+    throw new Error("请选择图片文件后再上传。");
+  }
+
+  return isHeicLikeFile(file) ? convertHeicToJpeg(file) : file;
+}
+
+export async function prepareLifeImageForUpload(file: File): Promise<PreparedLifeImageUpload> {
+  const normalizedFile = await normalizeLifeImageFile(file);
+  const [imageFile, thumbnailFile] = await Promise.all([
+    compressImage(normalizedFile, {
+      maxSizeMB: MAX_FULL_IMAGE_SIZE_MB,
+      maxWidthOrHeight: MAX_FULL_IMAGE_EDGE,
+      initialQuality: 0.88,
+    }),
+    compressImage(normalizedFile, {
+      maxSizeMB: MAX_THUMBNAIL_IMAGE_SIZE_MB,
+      maxWidthOrHeight: MAX_THUMBNAIL_IMAGE_EDGE,
+      initialQuality: 0.74,
+      suffix: "-thumb",
+    }),
+  ]);
+
+  if (imageFile.size > MAX_BACKEND_UPLOAD_BYTES) {
     throw new Error("图片处理后仍超过 10MB，请先导出较小版本后再上传。");
   }
 
-  return processedFile;
+  const { width, height } = await readImageDimensions(imageFile);
+
+  return {
+    imageFile,
+    thumbnailFile,
+    width,
+    height,
+  };
 }
 
 export async function readImageDimensions(file: File) {
