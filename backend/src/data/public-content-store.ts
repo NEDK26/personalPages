@@ -827,9 +827,10 @@ export async function getProfileContent(): Promise<ProfileContent> {
 }
 
 export async function getNowContent(includeAll = false): Promise<NowContent> {
-  const items = await readJourneyItems(includeAll);
+  const fallbackItems = includeAll ? fallbackNow.items : fallbackNow.items.filter((item) => item.status === "published");
 
   try {
+    const items = await readJourneyItems(includeAll);
     const storedEntry = await getStoredContent(CONTENT_SCOPE_NOW);
 
     if (!storedEntry) {
@@ -861,7 +862,7 @@ export async function getNowContent(includeAll = false): Promise<NowContent> {
   } catch {
     return {
       ...fallbackNow,
-      items,
+      items: fallbackItems,
     };
   }
 }
