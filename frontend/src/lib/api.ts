@@ -18,6 +18,7 @@ import type {
 } from "../types/public";
 
 const LIVES_PAGE_SIZE = 4;
+const DIRECT_BLOB_MULTIPART_THRESHOLD_BYTES = 4_500_000;
 
 const apiConfig = {
   baseUrl: resolveBaseUrl(),
@@ -121,6 +122,79 @@ function createBasicAuthHeader(username: string, password: string) {
   const encodedValue = btoa(`${username}:${password}`);
 
   return `Basic ${encodedValue}`;
+}
+
+function sanitizeFileNameSegment(value: string) {
+  const normalizedValue = value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  return normalizedValue || "image";
+}
+
+function getImageFileExtension(fileName: string, contentType: string) {
+  const lastDotIndex = fileName.lastIndexOf(".");
+  const rawExtension = lastDotIndex >= 0 ? fileName.slice(lastDotIndex + 1) : "";
+  const normalizedExtension = sanitizeFileNameSegment(rawExtension);
+
+  if (normalizedExtension !== "image") {
+    return normalizedExtension;
+  }
+
+  if (contentType === "image/png") {
+    return "png";
+  }
+
+  if (contentType === "image/webp") {
+    return "webp";
+  }
+
+  return "jpg";
+}
+
+function buildLifeImageUploadPathname(file: File) {
+  const lastDotIndex = file.name.lastIndexOf(".");
+  const rawBaseName = lastDotIndex >= 0 ? file.name.slice(0, lastDotIndex) : file.name;
+  const baseName = sanitizeFileNameSegment(rawBaseName);
+  const extension = getImageFileExtension(file.name, file.type);
+
+  return `lives/${baseName}.${extension}`;
+}
+
+async function uploadAdminLifeImageThroughLegacyProxy(
+  username: string,
+  password: string,
+  file: File,
+): Promise<AdminLifeImageUploadResponse> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch(buildApiUrl("/admin/lives/upload"), {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      Authorization: createBasicAuthHeader(username, password),
+    },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error(await getApiErrorMessage(response, "图片上传失败"));
+  }
+
+  const payload: unknown = await response.json();
+
+  if (!isAdminLifeImageUploadResponse(payload)) {
+    throw new Error("图片上传响应格式不正确");
+  }
+
+  return payload;
+}
+
+function shouldUseLegacyBackendUpload() {
+  return import.meta.env.DEV;
 }
 
 async function getApiErrorMessage(response: Response, fallbackMessage: string) {
@@ -296,27 +370,31 @@ export async function uploadAdminLifeImage(
   password: string,
   file: File,
 ): Promise<AdminLifeImageUploadResponse> {
-  const formData = new FormData();
-  formData.append("file", file);
-
-  const response = await fetch(buildApiUrl("/admin/lives/upload"), {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      Authorization: createBasicAuthHeader(username, password),
-    },
-    body: formData,
-  });
-
-  if (!response.ok) {
-    throw new Error(await getApiErrorMessage(response, "图片上传失败"));
+  if (shouldUseLegacyBackendUpload()) {
+    return uploadAdminLifeImageThroughLegacyProxy(username, password, file);
   }
 
-  const payload: unknown = await response.json();
+  try {
+    const { upload } = await import("@vercel/blob/client");
+    const uploadedBlob = await upload(buildLifeImageUploadPathname(file), file, {
+      access: "public",
+      contentType: file.type || undefined,
+      handleUploadUrl: buildApiUrl("/admin/lives/upload"),
+      headers: {
+        Accept: "application/json",
+        Authorization: createBasicAuthHeader(username, password),
+      },
+      multipart: file.size > DIRECT_BLOB_MULTIPART_THRESHOLD_BYTES,
+    });
 
-  if (!isAdminLifeImageUploadResponse(payload)) {
-    throw new Error("图片上传响应格式不正确");
+    return {
+      url: uploadedBlob.url,
+      pathname: uploadedBlob.pathname,
+      contentType: uploadedBlob.contentType,
+      size: file.size,
+      uploadedAt: new Date().toISOString(),
+    };
+  } catch (error) {
+    throw new Error(error instanceof Error ? error.message : "图片上传失败");
   }
-
-  return payload;
 }

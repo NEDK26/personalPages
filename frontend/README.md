@@ -21,7 +21,7 @@
 
 - 本地开发通过 `/api` 代理到 `http://localhost:3000`
 - 生产环境默认也请求同域 `/api`
-- Vercel 上由 `frontend/api/[...route].ts` 代理到真实后端，避免浏览器直接访问后端域名
+- Vercel 上由 `frontend/api/*.ts` 显式路由处理同域 API；其中 `frontend/api/admin/lives/upload.ts` 负责给浏览器签发 Blob 直传 token
 
 ## 常改位置
 
@@ -37,7 +37,7 @@
 2. 如果想让头像也走后端配置，再把前端头像从本地文件切到 `profile.avatarUrl`。
 3. 补充更多页面模块，例如文章、标签页和项目详情。
 4. 完成域名绑定和线上回归检查。
-5. 如果要增加新的公开接口，同步更新 `frontend/api/[...route].ts` 的 allowlist。
+5. 如果要增加新的公开接口，新增对应的 `frontend/api/*.ts` 显式路由文件。
 
 ## Vercel 部署
 
@@ -55,6 +55,7 @@
    - Output Directory：`dist`
 6. 在前端 Vercel 项目的 Environment Variables 里新增：
    - `BACKEND_API_BASE_URL`：你的后端线上地址，例如 `https://your-backend-project.vercel.app`
+   - `BLOB_READ_WRITE_TOKEN`：用于 `/api/admin/lives/upload` 给浏览器签发 Blob 直传 token
 7. 如果你之前在前端 Vercel 项目里配置过 `VITE_API_BASE_URL=https://...`，请删除它或改回 `/api`。
 8. 点击 `Deploy`。
 
@@ -75,10 +76,11 @@ vercel
 - In which directory is your code located?：输入 `./`
 - Want to modify these settings?：选 `N`
 
-部署前记得在前端 Vercel 项目里设置 `BACKEND_API_BASE_URL`。
+部署前记得在前端 Vercel 项目里设置 `BACKEND_API_BASE_URL` 和 `BLOB_READ_WRITE_TOKEN`。
 
 ## 线上请求链路
 
 - 浏览器请求：`https://你的前端域名/api/profile`
 - 前端 Vercel Function 代理到：`BACKEND_API_BASE_URL/profile`
 - 浏览器不再直连后端域名，所以国内访问前端域名时不会因为后端域名不可达而直接超时
+- Lives 图片上传链路改为：浏览器 -> `POST /api/admin/lives/upload` 申请 token -> 浏览器直传 Vercel Blob
