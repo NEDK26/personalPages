@@ -38,6 +38,14 @@ import {
   DialogTitle,
 } from "./components/ui/dialog";
 import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+} from "./components/ui/drawer";
+import { useIsMobile } from "./components/ui/use-mobile";
+import {
   fetchAdminContent,
   saveAdminContent,
   fetchMoreLives,
@@ -449,6 +457,13 @@ function NowSection({ now, sectionId }: NowSectionProps) {
 
 function HighlightsSection({ highlights, sectionId }: HighlightsSectionProps) {
   const [selectedHighlight, setSelectedHighlight] = useState<HighlightItem | null>(null);
+  const isMobile = useIsMobile();
+
+  function handleHighlightDetailOpenChange(open: boolean) {
+    if (!open) {
+      setSelectedHighlight(null);
+    }
+  }
 
   return (
     <SectionShell title="Projects" eyebrow="Project Experience" sectionId={sectionId}>
@@ -470,40 +485,79 @@ function HighlightsSection({ highlights, sectionId }: HighlightsSectionProps) {
         ))}
       </div>
 
-      <Dialog open={selectedHighlight !== null} onOpenChange={(open) => !open && setSelectedHighlight(null)}>
-        <DialogContent className="max-w-[calc(100%-1rem)] border-zinc-200 bg-white/96 shadow-[0_24px_80px_rgba(15,23,42,0.16)] sm:max-w-2xl">
-          {selectedHighlight ? (
-            <DialogHeader className="text-left">
-              <span className="inline-flex w-fit rounded-full bg-zinc-200 px-3 py-1 text-xs uppercase tracking-[0.24em] text-slate-700">
-                {selectedHighlight.kind}
-              </span>
-              <DialogTitle className="text-2xl text-slate-950">{selectedHighlight.title}</DialogTitle>
-              <div className="flex flex-wrap gap-2 text-sm text-slate-500">
-                <span className="rounded-full border border-zinc-200 bg-white px-3 py-1">{selectedHighlight.period}</span>
-                {selectedHighlight.stack.map((item) => (
-                  <span key={item} className="rounded-full border border-zinc-200 bg-zinc-100 px-3 py-1 text-slate-600">
-                    {item}
+      {isMobile ? (
+        <Drawer open={selectedHighlight !== null} onOpenChange={handleHighlightDetailOpenChange}>
+          <DrawerContent className="max-h-[85svh] border-zinc-200 bg-white/96 shadow-[0_-18px_48px_rgba(15,23,42,0.14)]">
+            {selectedHighlight ? (
+              <div className="overflow-y-auto">
+                <DrawerHeader className="text-left">
+                  <span className="inline-flex w-fit rounded-full bg-zinc-200 px-3 py-1 text-xs uppercase tracking-[0.24em] text-slate-700">
+                    {selectedHighlight.kind}
                   </span>
-                ))}
+                  <DrawerTitle className="text-xl leading-tight text-slate-950">{selectedHighlight.title}</DrawerTitle>
+                  <div className="flex flex-wrap gap-2 text-sm text-slate-500">
+                    <span className="rounded-full border border-zinc-200 bg-white px-3 py-1">{selectedHighlight.period}</span>
+                    {selectedHighlight.stack.map((item) => (
+                      <span key={item} className="rounded-full border border-zinc-200 bg-zinc-100 px-3 py-1 text-slate-600">
+                        {item}
+                      </span>
+                    ))}
+                  </div>
+                  <DrawerDescription className="text-base leading-7 text-slate-600">
+                    {selectedHighlight.description}
+                  </DrawerDescription>
+                  {selectedHighlight.link ? (
+                    <a
+                      href={selectedHighlight.link}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-2 inline-flex items-center gap-2 rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm text-slate-800 transition-colors hover:bg-zinc-100 hover:text-slate-950"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      查看相关链接
+                    </a>
+                  ) : null}
+                </DrawerHeader>
               </div>
-              <DialogDescription className="text-base leading-7 text-slate-600">
-                {selectedHighlight.description}
-              </DialogDescription>
-              {selectedHighlight.link ? (
-                <a
-                  href={selectedHighlight.link}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-2 rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm text-slate-800 transition-colors hover:bg-zinc-100 hover:text-slate-950"
-                >
-                  <ExternalLink className="h-4 w-4" />
-                  查看相关链接
-                </a>
-              ) : null}
-            </DialogHeader>
-          ) : null}
-        </DialogContent>
-      </Dialog>
+            ) : null}
+          </DrawerContent>
+        </Drawer>
+      ) : (
+        <Dialog open={selectedHighlight !== null} onOpenChange={handleHighlightDetailOpenChange}>
+          <DialogContent className="max-w-[calc(100%-1rem)] border-zinc-200 bg-white/96 shadow-[0_24px_80px_rgba(15,23,42,0.16)] sm:max-w-2xl">
+            {selectedHighlight ? (
+              <DialogHeader className="text-left">
+                <span className="inline-flex w-fit rounded-full bg-zinc-200 px-3 py-1 text-xs uppercase tracking-[0.24em] text-slate-700">
+                  {selectedHighlight.kind}
+                </span>
+                <DialogTitle className="text-2xl text-slate-950">{selectedHighlight.title}</DialogTitle>
+                <div className="flex flex-wrap gap-2 text-sm text-slate-500">
+                  <span className="rounded-full border border-zinc-200 bg-white px-3 py-1">{selectedHighlight.period}</span>
+                  {selectedHighlight.stack.map((item) => (
+                    <span key={item} className="rounded-full border border-zinc-200 bg-zinc-100 px-3 py-1 text-slate-600">
+                      {item}
+                    </span>
+                  ))}
+                </div>
+                <DialogDescription className="text-base leading-7 text-slate-600">
+                  {selectedHighlight.description}
+                </DialogDescription>
+                {selectedHighlight.link ? (
+                  <a
+                    href={selectedHighlight.link}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-2 rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm text-slate-800 transition-colors hover:bg-zinc-100 hover:text-slate-950"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    查看相关链接
+                  </a>
+                ) : null}
+              </DialogHeader>
+            ) : null}
+          </DialogContent>
+        </Dialog>
+      )}
     </SectionShell>
   );
 }
