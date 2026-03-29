@@ -57,6 +57,7 @@ import {
   saveAdminProfile,
   uploadAdminLifeImage,
 } from "../lib/api";
+import { prepareLifeImageForUpload, readImageDimensions } from "../lib/life-image";
 import type {
   ContentStatus,
   HighlightItem,
@@ -201,31 +202,6 @@ function formatDate(
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "资料加载失败，请稍后重试。";
-}
-
-async function readImageDimensions(file: File) {
-  const objectUrl = URL.createObjectURL(file);
-
-  try {
-    return await new Promise<{ width: number; height: number }>((resolve, reject) => {
-      const image = new Image();
-
-      image.onload = () => {
-        resolve({
-          width: image.naturalWidth,
-          height: image.naturalHeight,
-        });
-      };
-
-      image.onerror = () => {
-        reject(new Error("图片尺寸读取失败"));
-      };
-
-      image.src = objectUrl;
-    });
-  } finally {
-    URL.revokeObjectURL(objectUrl);
-  }
 }
 
 function opensNewTab(url: string) {
@@ -1132,9 +1108,10 @@ function AdminDialog({
     setAdminError(null);
 
     try {
+      const preparedFile = await prepareLifeImageForUpload(nextFile);
       const [dimensions, uploadedImage] = await Promise.all([
-        readImageDimensions(nextFile),
-        uploadAdminLifeImage(credentials.username, credentials.password, nextFile),
+        readImageDimensions(preparedFile),
+        uploadAdminLifeImage(credentials.username, credentials.password, preparedFile),
       ]);
 
       setDraftLives((currentLives) =>
@@ -1698,7 +1675,7 @@ function AdminDialog({
                               lifeImageInputRefs.current[life.id] = node;
                             }}
                             type="file"
-                            accept="image/*"
+                            accept="image/*,.heic,.heif"
                             onChange={(event) => void handleLifeImageSelect(life.id, event)}
                             className="hidden"
                           />
@@ -1711,7 +1688,7 @@ function AdminDialog({
                             {uploadingLifeId === life.id ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
                             {uploadingLifeId === life.id ? "上传中..." : "上传"}
                           </button>
-                          <span className="text-xs text-slate-500">上传后会自动回填图片地址和尺寸</span>
+                          <span className="text-xs text-slate-500">支持手机实况照片，上传时会自动提取静态图并尽量保留画质压缩</span>
                         </div>
                         <input value={life.imageUrl} onChange={(event) => updateDraftLife(index, "imageUrl", event.target.value)} placeholder="图片地址或 /lives/xxx.jpg" className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900 md:col-span-2" />
                         <input value={life.alt} onChange={(event) => updateDraftLife(index, "alt", event.target.value)} placeholder="图片 alt 文案" className="rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-slate-900 md:col-span-2" />
