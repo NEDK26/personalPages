@@ -1,7 +1,16 @@
+import { createHmac, timingSafeEqual } from "node:crypto";
+
 import { put } from "@vercel/blob";
 import { Hono } from "hono";
 import sharp from "sharp";
+import { z } from "zod";
 
+import {
+  clearAdminSession,
+  createAdminSession,
+  getAdminSession,
+  hasValidCsrfToken,
+} from "../auth/admin-session";
 import { env } from "../config/env";
 import {
   adminContentPayloadSchema,
@@ -25,6 +34,14 @@ const adminRouter = new Hono();
 const MAX_LIFE_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
 const THUMBNAIL_SIZE = 640;
 const THUMBNAIL_CONTENT_TYPE = "image/webp";
+const LOGIN_ATTEMPT_LIMIT = 5;
+const LOGIN_WINDOW_MILLISECONDS = 15 * 60 * 1000;
+const MAX_TRACKED_LOGIN_CLIENTS = 10_000;
+const loginAttempts = new Map<string, { count: number; resetAt: number }>();
+const loginPayloadSchema = z.object({
+  username: z.string().trim().min(1),
+  password: z.string().min(1),
+});
 
 function createUploadUnavailableResponse() {
   return new Response(
@@ -111,37 +128,53 @@ async function createLifeThumbnailBuffer(file: File) {
     .toBuffer();
 }
 
-function parseBasicAuthHeader(authorizationHeader: string | undefined) {
-  if (!authorizationHeader?.startsWith("Basic ")) {
-    return null;
+function getClientAddress(headers: Headers) {
+  const forwardedAddress = headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+
+  if (forwardedAddress) {
+    return forwardedAddress;
   }
 
-  try {
-    const encodedValue = authorizationHeader.slice(6);
-    const decodedValue = Buffer.from(encodedValue, "base64").toString("utf8");
-    const separatorIndex = decodedValue.indexOf(":");
-
-    if (separatorIndex === -1) {
-      return null;
-    }
-
-    return {
-      username: decodedValue.slice(0, separatorIndex),
-      password: decodedValue.slice(separatorIndex + 1),
-    };
-  } catch {
-    return null;
-  }
+  return headers.get("x-real-ip")?.trim() || "unknown";
 }
 
-function hasValidAdminCredentials(authorizationHeader: string | undefined) {
-  const credentials = parseBasicAuthHeader(authorizationHeader);
+function getLoginAttemptState(clientAddress: string) {
+  const currentState = loginAttempts.get(clientAddress);
 
-  if (!credentials) {
-    return false;
+  if (!currentState || currentState.resetAt <= Date.now()) {
+    if (!currentState && loginAttempts.size >= MAX_TRACKED_LOGIN_CLIENTS) {
+      const oldestClientAddress = loginAttempts.keys().next().value;
+
+      if (oldestClientAddress) {
+        loginAttempts.delete(oldestClientAddress);
+      }
+    }
+
+    const nextState = {
+      count: 0,
+      resetAt: Date.now() + LOGIN_WINDOW_MILLISECONDS,
+    };
+
+    loginAttempts.set(clientAddress, nextState);
+    return nextState;
   }
 
-  return credentials.username === env.ADMIN_USERNAME && credentials.password === env.ADMIN_PASSWORD;
+  return currentState;
+}
+
+function hasValidAdminCredentials(username: string, password: string) {
+  const digestCredential = (value: string) =>
+    createHmac("sha256", env.ADMIN_SESSION_SECRET).update(value).digest();
+  const usernameMatches = timingSafeEqual(
+    digestCredential(username),
+    digestCredential(env.ADMIN_USERNAME),
+  );
+  const passwordMatches = timingSafeEqual(
+    digestCredential(password),
+    digestCredential(env.ADMIN_PASSWORD),
+  );
+
+  return usernameMatches && passwordMatches;
 }
 
 function createUnauthorizedResponse() {
@@ -154,7 +187,6 @@ function createUnauthorizedResponse() {
       status: 401,
       headers: {
         "content-type": "application/json",
-        "www-authenticate": 'Basic realm="Admin", charset="UTF-8"',
       },
     },
   );
@@ -175,26 +207,84 @@ function createEditingUnavailableResponse() {
   );
 }
 
-adminRouter.post("/admin/login", (c) => {
-  if (!hasValidAdminCredentials(c.req.header("authorization"))) {
+adminRouter.post("/admin/login", async (c) => {
+  const clientAddress = getClientAddress(c.req.raw.headers);
+  const attemptState = getLoginAttemptState(clientAddress);
+
+  if (attemptState.count >= LOGIN_ATTEMPT_LIMIT) {
+    const retryAfterSeconds = Math.max(1, Math.ceil((attemptState.resetAt - Date.now()) / 1000));
+
+    return c.json(
+      {
+        error: "Too many login attempts",
+        message: "Please try again later",
+      },
+      429,
+      {
+        "Retry-After": String(retryAfterSeconds),
+      },
+    );
+  }
+
+  let payload: unknown;
+
+  try {
+    payload = await c.req.json();
+  } catch {
+    attemptState.count += 1;
     return createUnauthorizedResponse();
   }
+
+  const parsedPayload = loginPayloadSchema.safeParse(payload);
+
+  if (
+    !parsedPayload.success ||
+    !hasValidAdminCredentials(parsedPayload.data.username, parsedPayload.data.password)
+  ) {
+    attemptState.count += 1;
+    return createUnauthorizedResponse();
+  }
+
+  loginAttempts.delete(clientAddress);
+  const session = createAdminSession(c);
 
   return c.json({
     ok: true,
     editingEnabled: isAdminEditingEnabled(),
+    csrfToken: session.csrfToken,
   });
 });
 
 adminRouter.use("/admin/*", async (c, next) => {
-  if (!hasValidAdminCredentials(c.req.header("authorization"))) {
+  const session = getAdminSession(c);
+
+  if (!session) {
     return createUnauthorizedResponse();
+  }
+
+  if (!["GET", "HEAD"].includes(c.req.method) && !hasValidCsrfToken(c, session)) {
+    return c.json(
+      {
+        error: "Invalid CSRF token",
+        message: "A valid CSRF token is required",
+      },
+      403,
+    );
   }
 
   await next();
 });
 
+adminRouter.post("/admin/logout", (c) => {
+  clearAdminSession(c);
+
+  return c.json({
+    ok: true,
+  });
+});
+
 adminRouter.get("/admin/content", async (c) => {
+  const session = getAdminSession(c);
   const [profile, now, lives, highlights] = await Promise.all([
     getProfileContent(),
     getNowContent(true),
@@ -208,6 +298,7 @@ adminRouter.get("/admin/content", async (c) => {
     lives,
     highlights,
     editingEnabled: isAdminEditingEnabled(),
+    csrfToken: session?.csrfToken ?? "",
   });
 });
 
@@ -230,10 +321,12 @@ adminRouter.put("/admin/content", async (c) => {
   }
 
   const savedContent = await saveAdminContent(parsedPayload.data);
+  const session = getAdminSession(c);
 
   return c.json({
     ...savedContent,
     editingEnabled: true,
+    csrfToken: session?.csrfToken ?? "",
   });
 });
 

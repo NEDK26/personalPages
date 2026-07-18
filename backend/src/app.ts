@@ -13,8 +13,9 @@ app.use(
   "*",
   cors({
     origin: env.FRONTEND_ORIGINS,
+    credentials: true,
     allowMethods: ["GET", "POST", "PUT", "PATCH", "OPTIONS"],
-    allowHeaders: ["Content-Type", "Authorization"],
+    allowHeaders: ["Content-Type", "X-CSRF-Token"],
   }),
 );
 

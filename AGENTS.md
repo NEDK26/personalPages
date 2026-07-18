@@ -20,7 +20,9 @@ This file is for coding agents working in `/Users/minda66/Desktop/projects/demo-
 - `backend/src/data/` contains static response content.
 - `backend/dist/` is compiled output; do not edit it manually.
 - `backend/.env.example` documents expected environment variables.
-- `frontend/src/app/App.tsx` contains the main UI and admin dialog.
+- `frontend/src/app/App.tsx` contains the public UI and lazy-load boundary.
+- `frontend/src/app/AdminDialog.tsx` contains the admin login and content editor.
+- `frontend/server/proxy.ts` contains shared behavior for explicit Vercel proxy routes.
 - `frontend/src/lib/api.ts` contains browser-side API calls and always talks to same-origin `/api`.
 - `frontend/api/` contains explicit Vercel serverless proxy routes such as `health.ts`, `profile.ts`, and `admin/login.ts`.
 - `frontend/vercel.json` contains the frontend Vercel build settings.
@@ -44,8 +46,9 @@ This file is for coding agents working in `/Users/minda66/Desktop/projects/demo-
 - Backend:
 - `PORT`: server port; defaults to `3000` via Zod coercion.
 - `FRONTEND_ORIGINS`: comma-separated allowed origins for backend CORS.
-- `ADMIN_USERNAME`: admin basic-auth username; defaults to `admin`.
-- `ADMIN_PASSWORD`: admin basic-auth password; defaults to `190828xmd`.
+- `ADMIN_USERNAME`: admin login username; required in production.
+- `ADMIN_PASSWORD`: admin login password with at least 12 characters; required in production.
+- `ADMIN_SESSION_SECRET`: HMAC secret with at least 32 characters; required in production.
 - `BLOB_READ_WRITE_TOKEN`: optional unless Blob-backed image uploads are required.
 - `TURSO_DATABASE_URL`: optional unless database-backed features are required.
 - `TURSO_AUTH_TOKEN`: optional unless database-backed features are required.
@@ -65,9 +68,9 @@ This file is for coding agents working in `/Users/minda66/Desktop/projects/demo-
 - Keep `frontend/.env.production` on `VITE_API_BASE_URL=/api`; if someone sets it to an absolute backend URL, the production browser flow is wrong.
 - Use explicit route files in `frontend/api/` for every public and admin backend endpoint. This repo intentionally avoids a catch-all Vercel API proxy because nested routes caused 404 and function invocation failures after deployment.
 - Current public proxy files are `frontend/api/health.ts`, `frontend/api/profile.ts`, `frontend/api/now.ts`, `frontend/api/lives.ts`, and `frontend/api/highlights.ts`.
-- Current admin proxy files are `frontend/api/admin/login.ts`, `frontend/api/admin/content.ts`, `frontend/api/admin/profile.ts`, `frontend/api/admin/now.ts`, `frontend/api/admin/lives.ts`, and `frontend/api/admin/highlights.ts`.
-- `frontend/api/admin/lives/upload.ts` is the frontend-side Vercel Blob client-upload token route; it authenticates through backend admin login, issues direct upload permissions for the browser, and generates Lives thumbnails after uploads finish.
-- After a frontend deploy, verify the proxy chain through the frontend domain first: `GET /api/health`, then `POST /api/admin/login` with basic auth.
+- Current admin proxy files include login, logout, content, profile, now, lives, and highlights routes under `frontend/api/admin/`.
+- `frontend/api/admin/lives/upload.ts` is the frontend-side Vercel Blob client-upload token route; it authenticates the backend session Cookie, issues direct upload permissions for the browser, and generates Lives thumbnails after uploads finish.
+- After a frontend deploy, verify `GET /api/health`, then `POST /api/admin/login` with a JSON username/password body and confirm that a session Cookie is returned.
 - If frontend pages load but all `/api/*` requests fail, inspect the frontend Vercel functions first; if `/api/health` works but admin login fails, inspect backend admin env vars next.
 
 ## Build, Run, and Validation Commands
@@ -77,6 +80,7 @@ Run commands from the package directory they belong to.
 - Backend install dependencies: `npm install` from `backend/`
 - Backend dev server: `npm run dev` from `backend/`
 - Backend build TypeScript to `dist/`: `npm run build` from `backend/`
+- Backend content/database migration: `npm run migrate` from `backend/`
 - Backend compiled server: `npm run start` from `backend/`
 - Backend type-check without emitting files: `npx tsc --noEmit` from `backend/`
 - Frontend install dependencies: `npm install` from `frontend/`
@@ -93,19 +97,16 @@ Run commands from the package directory they belong to.
 
 ## Test Commands
 
-- There is currently no test runner configured in `backend/package.json`.
-- There are currently no committed test files in the repository.
-- Do not claim tests passed unless you first add a test framework and execute it.
-- If you need a basic validation step today, use `npx tsc --noEmit` and manual endpoint checks.
+- Backend test suite: `npm test` from `backend/`.
+- Backend single test file: `npm run test:file -- test/app.test.ts` from `backend/`.
+- Frontend server/proxy test suite: `npm test` from `frontend/`.
+- Frontend single test file: `npm run test:file -- server/proxy.test.ts` from `frontend/`.
+- Browser component tests are not configured yet; use type-check, production build, and manual UI checks for frontend components.
 
 ## Running a Single Test
 
-- Single-test execution is not available in the current repository because no test framework is configured.
-- If you introduce a test runner, update this file with:
-  - the full test command
-  - the single-file test command
-  - the single-test-name pattern command
-- Until then, do not invent commands such as `npm test`, `vitest`, or `jest`.
+- Backend by name: `npm run test:file -- --test-name-pattern="admin login" test/app.test.ts`.
+- Frontend by name: `npm run test:file -- --test-name-pattern="admin proxy" server/proxy.test.ts`.
 
 ## Manual Verification
 
@@ -115,7 +116,7 @@ Run commands from the package directory they belong to.
 - Check backend health directly: `GET http://localhost:3000/health`
 - Check frontend proxy health: `GET http://localhost:5173/api/health`
 - Check public frontend proxy endpoints: `GET /api/profile`, `GET /api/now`, `GET /api/lives`, `GET /api/highlights`
-- Check admin login through the frontend proxy: `POST /api/admin/login` with basic auth.
+- Check admin login through the frontend proxy: `POST /api/admin/login` with a JSON username/password body.
 - When database credentials are absent, health should still respond and report database configuration accurately.
 
 ## Post-change Run Rule

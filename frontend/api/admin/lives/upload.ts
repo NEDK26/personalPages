@@ -77,20 +77,20 @@ async function getResponseMessage(response: Response, fallbackMessage: string) {
 }
 
 async function authenticateAdminRequest(request: Request, backendBaseUrl: string) {
-  const authorization = request.headers.get("authorization");
+  const cookie = request.headers.get("cookie");
 
-  if (!authorization) {
-    throw new HttpError(401, "Missing admin authorization");
+  if (!cookie) {
+    throw new HttpError(401, "Missing admin session");
   }
 
   let authResponse: Response;
 
   try {
-    authResponse = await fetch(`${backendBaseUrl}/admin/login`, {
-      method: "POST",
+    authResponse = await fetch(`${backendBaseUrl}/admin/content`, {
+      method: "GET",
       headers: {
         accept: "application/json",
-        authorization,
+        cookie,
       },
       redirect: "follow",
     });

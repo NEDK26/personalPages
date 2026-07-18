@@ -15,3 +15,4 @@ frontend/.env.*.local
 !frontend/.env.production
 frontend/vite-dev.log
 frontend/.vercel/
+frontend/*.tsbuildinfo

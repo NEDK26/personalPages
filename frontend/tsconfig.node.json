@@ -1,6 +1,5 @@
 {
   "compilerOptions": {
-    "composite": true,
     "lib": ["ES2020", "DOM"],
     "skipLibCheck": true,
     "module": "ESNext",
@@ -8,5 +7,5 @@
     "allowSyntheticDefaultImports": true,
     "types": ["node"]
   },
-  "include": ["vite.config.ts", "api/**/*.ts"]
+  "include": ["vite.config.ts", "api/**/*.ts", "server/proxy.ts"]
 }

@@ -87,6 +87,7 @@ export interface AdminContentResponse {
   lives: LifeMoment[];
   highlights: HighlightItem[];
   editingEnabled: boolean;
+  csrfToken: string;
 }
 
 export interface AdminLifeImageUploadResponse {
@@ -272,7 +273,8 @@ export function isAdminContentResponse(value: unknown): value is AdminContentRes
     value.lives.every((item) => isLifeMoment(item)) &&
     Array.isArray(value.highlights) &&
     value.highlights.every((item) => isHighlightItem(item)) &&
-    typeof value.editingEnabled === "boolean"
+    typeof value.editingEnabled === "boolean" &&
+    typeof value.csrfToken === "string"
   );
 }
 

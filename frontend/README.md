@@ -8,6 +8,7 @@
 - 启动开发环境：`npm run dev`
 - 生产构建：`npm run build`
 - TypeScript 检查：`npm run typecheck`
+- 代理测试：`npm test`
 
 默认本地访问地址：`http://localhost:5173/`
 
@@ -27,17 +28,12 @@
 
 - 头像文件：`src/assets/avatar.jpg`
 - 页面主内容：`src/app/App.tsx`
+- 按需加载的管理控制台：`src/app/AdminDialog.tsx`
 - 入口文件：`src/main.tsx`
 - 接口类型：`src/types/public.ts`
 - API 请求封装：`src/lib/api.ts`
 
-## 下一步计划
-
-1. 更新 `backend/src/data/public-content.ts`，把默认示例数据替换成你的真实资料。
-2. 如果想让头像也走后端配置，再把前端头像从本地文件切到 `profile.avatarUrl`。
-3. 补充更多页面模块，例如文章、标签页和项目详情。
-4. 完成域名绑定和线上回归检查。
-5. 如果要增加新的公开接口，新增对应的 `frontend/api/*.ts` 显式路由文件。
+管理员登录使用后端签发的同源 `HttpOnly` 会话 Cookie，前端不会把账号或密码写入 `localStorage`。新增管理路由时，需要同时在 `frontend/api/admin/` 增加显式代理文件。
 
 ## Vercel 部署
 

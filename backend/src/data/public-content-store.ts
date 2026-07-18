@@ -205,7 +205,7 @@ const fallbackHighlights = z.array(highlightItemSchema).parse(
   })),
 );
 
-let ensureContentStoragePromise: Promise<void> | null = null;
+let contentMigrationPromise: Promise<void> | null = null;
 
 function createTimestamp() {
   return new Date().toISOString();
@@ -231,13 +231,13 @@ async function ensureLifeMomentThumbnailColumn() {
   }
 }
 
-async function ensureContentStorage() {
+export async function migrateContentStorage() {
   if (!db) {
     return;
   }
 
-  if (!ensureContentStoragePromise) {
-    ensureContentStoragePromise = (async () => {
+  if (!contentMigrationPromise) {
+    contentMigrationPromise = (async () => {
       await db.execute(
         "CREATE TABLE IF NOT EXISTS public_content (scope TEXT PRIMARY KEY, data TEXT NOT NULL, updated_at TEXT NOT NULL)",
       );
@@ -303,7 +303,7 @@ async function ensureContentStorage() {
     })();
   }
 
-  await ensureContentStoragePromise;
+  await contentMigrationPromise;
 }
 
 async function readStoredContent(scope: "profile" | "now" | "lives" | "highlights") {
@@ -340,8 +340,6 @@ async function getStoredContent(scope: "profile" | "now" | "lives" | "highlights
     return null;
   }
 
-  await ensureContentStorage();
-
   return readStoredContent(scope);
 }
 
@@ -366,8 +364,6 @@ async function saveStoredContent(scope: "profile" | "now" | "lives" | "highlight
   if (!db) {
     throw new Error("Admin editing requires a configured database");
   }
-
-  await ensureContentStorage();
 
   await writeStoredContent(scope, data);
 }
@@ -574,8 +570,6 @@ async function readJourneyItems(includeAll: boolean) {
     return includeAll ? fallbackNow.items : fallbackNow.items.filter((item) => item.status === "published");
   }
 
-  await ensureContentStorage();
-
   const result = await db.execute({
     sql: `
       SELECT id, type, title, organization, location, period, description, status, sort_order, created_at, updated_at
@@ -592,8 +586,6 @@ async function readLifeMoments(includeAll: boolean) {
   if (!db) {
     return includeAll ? fallbackLives : fallbackLives.filter((item) => item.status === "published");
   }
-
-  await ensureContentStorage();
 
   const result = await db.execute({
     sql: `
@@ -612,8 +604,6 @@ async function readProjects(includeAll: boolean) {
     return includeAll ? fallbackHighlights : fallbackHighlights.filter((item) => item.status === "published");
   }
 
-  await ensureContentStorage();
-
   const result = await db.execute({
     sql: `
       SELECT id, title, summary, description, kind, period, stack_json, link, status, sort_order, created_at, updated_at
@@ -630,31 +620,10 @@ async function replaceJourneyItems(items: JourneyItem[]) {
   if (!db) {
     throw new Error("Admin editing requires a configured database");
   }
-  await db.execute("DELETE FROM journey_items");
 
   const timestamp = createTimestamp();
 
-  for (const item of items) {
-    await db.execute({
-      sql: `
-        INSERT INTO journey_items (id, type, title, organization, location, period, description, status, sort_order, created_at, updated_at)
-        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
-      `,
-      args: [
-        item.id,
-        item.type,
-        item.title,
-        item.organization,
-        item.location,
-        item.period,
-        item.description,
-        item.status,
-        item.sortOrder,
-        timestamp,
-        timestamp,
-      ],
-    });
-  }
+  await db.batch(createReplaceJourneyStatements(items, timestamp), "write");
 }
 
 function createUpsertStoredContentStatement(
@@ -766,66 +735,18 @@ async function replaceLifeMoments(items: LifeMoment[]) {
   if (!db) {
     throw new Error("Admin editing requires a configured database");
   }
-  await db.execute("DELETE FROM life_moments");
-
   const timestamp = createTimestamp();
 
-  for (const item of items) {
-    await db.execute({
-      sql: `
-        INSERT INTO life_moments (id, title, image_url, thumbnail_url, alt, location, captured_at, description, width, height, status, sort_order, created_at, updated_at)
-        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)
-      `,
-      args: [
-        item.id,
-        item.title,
-        item.imageUrl,
-        item.thumbnailUrl ?? null,
-        item.alt,
-        item.location,
-        item.capturedAt,
-        item.description,
-        item.width,
-        item.height,
-        item.status,
-        item.sortOrder,
-        timestamp,
-        timestamp,
-      ],
-    });
-  }
+  await db.batch(createReplaceLifeMomentStatements(items, timestamp), "write");
 }
 
 async function replaceProjects(items: HighlightItem[]) {
   if (!db) {
     throw new Error("Admin editing requires a configured database");
   }
-  await db.execute("DELETE FROM projects");
-
   const timestamp = createTimestamp();
 
-  for (const item of items) {
-    await db.execute({
-      sql: `
-        INSERT INTO projects (id, title, summary, description, kind, period, stack_json, link, status, sort_order, created_at, updated_at)
-        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
-      `,
-      args: [
-        item.id,
-        item.title,
-        item.summary,
-        item.description,
-        item.kind,
-        item.period,
-        JSON.stringify(item.stack),
-        item.link ?? "",
-        item.status,
-        item.sortOrder,
-        timestamp,
-        timestamp,
-      ],
-    });
-  }
+  await db.batch(createReplaceProjectStatements(items, timestamp), "write");
 }
 
 export async function getProfileContent(): Promise<ProfileContent> {
@@ -907,27 +828,36 @@ export async function saveProfileContent(content: ProfileContent) {
 }
 
 export async function saveNowContent(content: NowContent) {
+  if (!db) {
+    throw new Error("Admin editing requires a configured database");
+  }
+
+  const timestamp = createTimestamp();
   const parsedNow = nowPayloadSchema.parse({
     ...content,
-    updatedAt: createTimestamp().slice(0, 10),
+    updatedAt: timestamp.slice(0, 10),
   });
 
-  await saveStoredContent(
-    CONTENT_SCOPE_NOW,
-    JSON.stringify({
-      summary: parsedNow.summary,
-      updatedAt: parsedNow.updatedAt,
-    }),
+  await db.batch(
+    [
+      createUpsertStoredContentStatement(
+        CONTENT_SCOPE_NOW,
+        JSON.stringify({
+          summary: parsedNow.summary,
+          updatedAt: parsedNow.updatedAt,
+        }),
+        timestamp,
+      ),
+      ...createReplaceJourneyStatements(parsedNow.items, timestamp),
+    ],
+    "write",
   );
-  await replaceJourneyItems(parsedNow.items);
 
   return parsedNow;
 }
 
 export async function saveLivesContent(items: LifeMoment[]) {
   const parsedLives = z.array(lifeMomentSchema).parse(items);
-
-  await ensureContentStorage();
 
   await replaceLifeMoments(parsedLives);
 
@@ -936,8 +866,6 @@ export async function saveLivesContent(items: LifeMoment[]) {
 
 export async function saveHighlightsContent(items: HighlightItem[]) {
   const parsedHighlights = z.array(highlightItemSchema).parse(items);
-
-  await ensureContentStorage();
 
   await replaceProjects(parsedHighlights);
 
@@ -962,8 +890,6 @@ export async function saveAdminContent(content: {
   });
   const parsedLives = z.array(lifeMomentSchema).parse(content.lives);
   const parsedHighlights = z.array(highlightItemSchema).parse(content.highlights);
-
-  await ensureContentStorage();
 
   await db.batch(
     [

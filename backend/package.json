@@ -6,6 +6,9 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
+    "migrate": "node --import tsx src/migrate.ts",
+    "test": "node --import tsx --test test/*.test.ts",
+    "test:file": "node --import tsx --test",
     "start": "node dist/server.js"
   },
   "keywords": [],

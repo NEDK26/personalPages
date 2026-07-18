@@ -19,6 +19,7 @@ import type {
 
 const LIVES_PAGE_SIZE = 4;
 const DIRECT_BLOB_MULTIPART_THRESHOLD_BYTES = 4_500_000;
+let adminCsrfToken: string | null = null;
 
 const apiConfig = {
   baseUrl: resolveBaseUrl(),
@@ -118,12 +119,6 @@ export async function fetchMoreLives(
   };
 }
 
-function createBasicAuthHeader(username: string, password: string) {
-  const encodedValue = btoa(`${username}:${password}`);
-
-  return `Basic ${encodedValue}`;
-}
-
 function sanitizeFileNameSegment(value: string) {
   const normalizedValue = value
     .trim()
@@ -178,8 +173,6 @@ function buildBlobUrlFromPathname(blobUrl: string, pathname: string) {
 }
 
 async function uploadAdminLifeImageThroughLegacyProxy(
-  username: string,
-  password: string,
   file: File,
 ): Promise<AdminLifeImageUploadResponse> {
   const formData = new FormData();
@@ -189,7 +182,7 @@ async function uploadAdminLifeImageThroughLegacyProxy(
     method: "POST",
     headers: {
       Accept: "application/json",
-      Authorization: createBasicAuthHeader(username, password),
+      ...(adminCsrfToken ? { "X-CSRF-Token": adminCsrfToken } : {}),
     },
     body: formData,
   });
@@ -236,15 +229,15 @@ async function getApiErrorMessage(response: Response, fallbackMessage: string) {
 async function fetchAdminJson<T>(
   path: string,
   guard: (value: unknown) => value is T,
-  username: string,
-  password: string,
   init?: RequestInit,
 ) {
   const response = await fetch(buildApiUrl(path), {
     ...init,
     headers: {
       Accept: "application/json",
-      Authorization: createBasicAuthHeader(username, password),
+      ...(adminCsrfToken && init?.method && !["GET", "HEAD"].includes(init.method)
+        ? { "X-CSRF-Token": adminCsrfToken }
+        : {}),
       ...(init?.headers ?? {}),
     },
   });
@@ -267,39 +260,49 @@ export async function loginAdmin(username: string, password: string) {
     method: "POST",
     headers: {
       Accept: "application/json",
-      Authorization: createBasicAuthHeader(username, password),
+      "Content-Type": "application/json",
     },
+    body: JSON.stringify({ username, password }),
   });
 
   if (!response.ok) {
     throw new Error(response.status === 401 ? "账号或密码错误" : "管理员登录失败");
   }
 
-  return {
-    username,
-    password,
-  };
+  const payload: unknown = await response.json();
+
+  if (
+    typeof payload !== "object" ||
+    payload === null ||
+    typeof (payload as { csrfToken?: unknown }).csrfToken !== "string"
+  ) {
+    throw new Error("管理员登录响应格式不正确");
+  }
+
+  adminCsrfToken = (payload as { csrfToken: string }).csrfToken;
 }
 
-export async function fetchAdminContent(username: string, password: string): Promise<AdminContentResponse> {
-  return fetchAdminJson<AdminContentResponse>(
-    "/admin/content",
-    isAdminContentResponse,
-    username,
-    password,
+export async function logoutAdmin() {
+  await fetchAdminJson<{ ok: boolean }>(
+    "/admin/logout",
+    (value): value is { ok: boolean } =>
+      typeof value === "object" && value !== null && (value as { ok?: unknown }).ok === true,
+    { method: "POST" },
   );
+  adminCsrfToken = null;
 }
 
-export async function saveAdminContent(
-  username: string,
-  password: string,
-  content: AdminContentResponse,
-) {
+export async function fetchAdminContent(): Promise<AdminContentResponse> {
+  const content = await fetchAdminJson<AdminContentResponse>("/admin/content", isAdminContentResponse);
+
+  adminCsrfToken = content.csrfToken;
+  return content;
+}
+
+export async function saveAdminContent(content: Omit<AdminContentResponse, "csrfToken">) {
   return fetchAdminJson<AdminContentResponse>(
     "/admin/content",
     isAdminContentResponse,
-    username,
-    password,
     {
       method: "PUT",
       headers: {
@@ -315,8 +318,8 @@ export async function saveAdminContent(
   );
 }
 
-export async function saveAdminProfile(username: string, password: string, content: Profile) {
-  return fetchAdminJson<Profile>("/admin/profile", isProfile, username, password, {
+export async function saveAdminProfile(content: Profile) {
+  return fetchAdminJson<Profile>("/admin/profile", isProfile, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
@@ -325,8 +328,8 @@ export async function saveAdminProfile(username: string, password: string, conte
   });
 }
 
-export async function saveAdminNow(username: string, password: string, content: Now) {
-  return fetchAdminJson<Now>("/admin/now", isNow, username, password, {
+export async function saveAdminNow(content: Now) {
+  return fetchAdminJson<Now>("/admin/now", isNow, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
@@ -336,15 +339,11 @@ export async function saveAdminNow(username: string, password: string, content: 
 }
 
 export async function saveAdminLives(
-  username: string,
-  password: string,
   items: LivesResponse["items"],
 ) {
   const response = await fetchAdminJson<LivesResponse>(
     "/admin/lives",
     isLivesResponse,
-    username,
-    password,
     {
       method: "PUT",
       headers: {
@@ -358,15 +357,11 @@ export async function saveAdminLives(
 }
 
 export async function saveAdminHighlights(
-  username: string,
-  password: string,
   items: HighlightsResponse["items"],
 ) {
   const response = await fetchAdminJson<HighlightsResponse>(
     "/admin/highlights",
     isHighlightsResponse,
-    username,
-    password,
     {
       method: "PUT",
       headers: {
@@ -380,12 +375,10 @@ export async function saveAdminHighlights(
 }
 
 export async function uploadAdminLifeImage(
-  username: string,
-  password: string,
   file: File,
 ): Promise<AdminLifeImageUploadResponse> {
   if (shouldUseLegacyBackendUpload()) {
-    return uploadAdminLifeImageThroughLegacyProxy(username, password, file);
+    return uploadAdminLifeImageThroughLegacyProxy(file);
   }
 
   try {
@@ -395,7 +388,7 @@ export async function uploadAdminLifeImage(
       handleUploadUrl: buildApiUrl("/admin/lives/upload"),
       headers: {
         Accept: "application/json",
-        Authorization: createBasicAuthHeader(username, password),
+        ...(adminCsrfToken ? { "X-CSRF-Token": adminCsrfToken } : {}),
       },
     };
     const uploadedBlob = await upload(buildLifeImageUploadPathname(file), file, {
