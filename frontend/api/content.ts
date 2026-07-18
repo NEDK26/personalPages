@@ -1,4 +1,4 @@
-import { createProxyHandler } from "../server/proxy";
+import { createProxyHandler } from "../server/proxy.ts";
 
 export default createProxyHandler({
   path: "/content",

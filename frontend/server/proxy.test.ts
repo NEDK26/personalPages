@@ -75,3 +75,17 @@ test("proxy rejects methods outside the explicit route contract", async () => {
   assert.equal(response.status, 405);
   assert.equal(response.headers.get("allow"), "GET, HEAD");
 });
+
+test("Vercel API entrypoints load in the Node ESM runtime", async () => {
+  const entrypoints = await Promise.all([
+    import("../api/health.ts"),
+    import("../api/content.ts"),
+    import("../api/lives.ts"),
+    import("../api/admin/content.ts"),
+    import("../api/admin/login.ts"),
+  ]);
+
+  for (const entrypoint of entrypoints) {
+    assert.equal(typeof entrypoint.default.fetch, "function");
+  }
+});
