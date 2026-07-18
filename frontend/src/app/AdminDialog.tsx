@@ -8,14 +8,18 @@ import {
   loginAdmin,
   logoutAdmin,
   saveAdminContent,
-  saveAdminHighlights,
-  saveAdminLives,
-  saveAdminNow,
-  saveAdminProfile,
   uploadAdminLifeImage,
 } from "../lib/api";
 import { prepareLifeImageForUpload } from "../lib/life-image";
-import type { ContentStatus, HighlightItem, JourneyItem, LifeMoment, Now, Profile } from "../types/public";
+import type {
+  AdminContentResponse,
+  ContentStatus,
+  HighlightItem,
+  JourneyItem,
+  LifeMoment,
+  Now,
+  Profile,
+} from "../types/public";
 
 type AdminEditorTab = "profile" | "now" | "lives" | "highlights";
 interface AdminDialogProps {
@@ -260,6 +264,18 @@ function AdminDialog({
     }));
   }
 
+  function saveContentSections(
+    overrides: Partial<Pick<AdminContentResponse, "profile" | "now" | "lives" | "highlights">>,
+  ) {
+    return saveAdminContent({
+      profile: overrides.profile ?? savedProfileState,
+      now: overrides.now ?? savedNowState,
+      lives: overrides.lives ?? savedLivesState,
+      highlights: overrides.highlights ?? savedHighlightsState,
+      editingEnabled,
+    });
+  }
+
   async function handleSaveProfile() {
     if (!isAuthenticated) {
       return;
@@ -269,7 +285,8 @@ function AdminDialog({
     setAdminError(null);
 
     try {
-      const savedProfile = await saveAdminProfile(draftProfile);
+      const savedContent = await saveContentSections({ profile: draftProfile });
+      const savedProfile = savedContent.profile;
 
       setSavedProfileState(savedProfile);
       setDraftProfile(savedProfile);
@@ -342,7 +359,8 @@ function AdminDialog({
         ...draftNow,
         items: normalizeSortOrder(draftNow.items),
       };
-      const savedNow = await saveAdminNow(normalizedNow);
+      const savedContent = await saveContentSections({ now: normalizedNow });
+      const savedNow = savedContent.now;
 
       setSavedNowState(savedNow);
       setDraftNow(savedNow);
@@ -538,7 +556,8 @@ function AdminDialog({
     setAdminError(null);
 
     try {
-      const savedLives = await saveAdminLives(normalizeLivesForSave(draftLives));
+      const savedContent = await saveContentSections({ lives: normalizeLivesForSave(draftLives) });
+      const savedLives = savedContent.lives;
 
       setSavedLivesState(savedLives);
       setDraftLives(savedLives);
@@ -559,7 +578,10 @@ function AdminDialog({
     setAdminError(null);
 
     try {
-      const savedHighlights = await saveAdminHighlights(normalizeSortOrder(draftHighlights));
+      const savedContent = await saveContentSections({
+        highlights: normalizeSortOrder(draftHighlights),
+      });
+      const savedHighlights = savedContent.highlights;
 
       setSavedHighlightsState(savedHighlights);
       setDraftHighlights(savedHighlights);

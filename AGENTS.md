@@ -62,13 +62,13 @@ This file is for coding agents working in `/Users/minda66/Desktop/projects/demo-
 ## Vercel Frontend-Backend Connection
 
 - Deploy `backend/` and `frontend/` as separate Vercel projects.
-- In production, the browser must call same-origin frontend routes like `/api/profile` and `/api/admin/login`; do not point the browser directly at the backend Vercel domain.
+- In production, the browser must call same-origin frontend routes like `/api/content` and `/api/admin/login`; do not point the browser directly at the backend Vercel domain.
 - The frontend Vercel project forwards requests to the real backend using `BACKEND_API_BASE_URL`.
 - `POST /api/admin/lives/upload` is special: the browser first asks the frontend Vercel route for a client upload token, then uploads the image directly to Vercel Blob without proxying the binary file through backend; the frontend Vercel route then generates the square thumbnail server-side after upload completes.
 - Keep `frontend/.env.production` on `VITE_API_BASE_URL=/api`; if someone sets it to an absolute backend URL, the production browser flow is wrong.
 - Use explicit route files in `frontend/api/` for every public and admin backend endpoint. This repo intentionally avoids a catch-all Vercel API proxy because nested routes caused 404 and function invocation failures after deployment.
-- Current public proxy files are `frontend/api/health.ts`, `frontend/api/profile.ts`, `frontend/api/now.ts`, `frontend/api/lives.ts`, and `frontend/api/highlights.ts`.
-- Current admin proxy files include login, logout, content, profile, now, lives, and highlights routes under `frontend/api/admin/`.
+- Current public proxy files are `frontend/api/health.ts`, `frontend/api/content.ts`, and `frontend/api/lives.ts`.
+- Current admin proxy files are `frontend/api/admin/login.ts`, `frontend/api/admin/content.ts`, and `frontend/api/admin/lives/upload.ts`; `POST /api/admin/login` logs in and `DELETE /api/admin/login` logs out through the same Function.
 - `frontend/api/admin/lives/upload.ts` is the frontend-side Vercel Blob client-upload token route; it authenticates the backend session Cookie, issues direct upload permissions for the browser, and generates Lives thumbnails after uploads finish.
 - After a frontend deploy, verify `GET /api/health`, then `POST /api/admin/login` with a JSON username/password body and confirm that a session Cookie is returned.
 - If frontend pages load but all `/api/*` requests fail, inspect the frontend Vercel functions first; if `/api/health` works but admin login fails, inspect backend admin env vars next.
@@ -115,7 +115,7 @@ Run commands from the package directory they belong to.
 - Check backend root endpoint directly: `GET http://localhost:3000/`
 - Check backend health directly: `GET http://localhost:3000/health`
 - Check frontend proxy health: `GET http://localhost:5173/api/health`
-- Check public frontend proxy endpoints: `GET /api/profile`, `GET /api/now`, `GET /api/lives`, `GET /api/highlights`
+- Check public frontend proxy endpoints: `GET /api/content` and `GET /api/lives`
 - Check admin login through the frontend proxy: `POST /api/admin/login` with a JSON username/password body.
 - When database credentials are absent, health should still respond and report database configuration accurately.
 

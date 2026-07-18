@@ -67,9 +67,9 @@ test("public proxy preserves query parameters and applies shared cache policy", 
 });
 
 test("proxy rejects methods outside the explicit route contract", async () => {
-  const handler = createProxyHandler({ path: "/profile", methods: ["GET", "HEAD"] });
+  const handler = createProxyHandler({ path: "/content", methods: ["GET", "HEAD"] });
   const response = await handler.fetch(
-    new Request("https://frontend.example.com/api/profile", { method: "POST" }),
+    new Request("https://frontend.example.com/api/content", { method: "POST" }),
   );
 
   assert.equal(response.status, 405);

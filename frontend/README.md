@@ -76,7 +76,7 @@ vercel
 
 ## 线上请求链路
 
-- 浏览器请求：`https://你的前端域名/api/profile`
-- 前端 Vercel Function 代理到：`BACKEND_API_BASE_URL/profile`
+- 浏览器首屏请求：`https://你的前端域名/api/content`
+- 前端 Vercel Function 代理到：`BACKEND_API_BASE_URL/content`
 - 浏览器不再直连后端域名，所以国内访问前端域名时不会因为后端域名不可达而直接超时
 - Lives 图片上传链路改为：浏览器 -> `POST /api/admin/lives/upload` 申请 token -> 浏览器直传 Vercel Blob -> 前端 Vercel 路由在上传完成后生成缩略图

@@ -1,7 +1,7 @@
 import { createProxyHandler } from "../server/proxy";
 
 export default createProxyHandler({
-  path: "/highlights",
+  path: "/content",
   methods: ["GET", "HEAD"],
   cachePublicGet: true,
 });

@@ -30,6 +30,15 @@ async function login(clientAddress = "198.51.100.1") {
 }
 
 test("public Lives endpoint paginates and rejects an unknown cursor", async () => {
+  const contentResponse = await app.request("/content");
+  const content = await contentResponse.json();
+
+  assert.equal(contentResponse.status, 200);
+  assert.equal(typeof content.profile.name, "string");
+  assert.ok(Array.isArray(content.now.items));
+  assert.ok(Array.isArray(content.lives));
+  assert.ok(Array.isArray(content.highlights));
+
   const firstPageResponse = await app.request("/lives?limit=2");
   const firstPage = await firstPageResponse.json();
 
@@ -85,8 +94,8 @@ test("admin login creates a secure server-side session flow", async () => {
 
   assert.equal(validCsrfResponse.status, 503);
 
-  const logoutResponse = await app.request("/admin/logout", {
-    method: "POST",
+  const logoutResponse = await app.request("/admin/login", {
+    method: "DELETE",
     headers: {
       Cookie: cookie,
       "X-CSRF-Token": loginBody.csrfToken,

@@ -26,6 +26,7 @@ app.get("/", (c) => {
     message: "Backend API is running",
     docs: [
       "/health",
+      "/content",
       "/profile",
       "/now",
       "/lives",

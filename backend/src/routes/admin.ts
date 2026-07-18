@@ -275,7 +275,7 @@ adminRouter.use("/admin/*", async (c, next) => {
   await next();
 });
 
-adminRouter.post("/admin/logout", (c) => {
+adminRouter.delete("/admin/login", (c) => {
   clearAdminSession(c);
 
   return c.json({

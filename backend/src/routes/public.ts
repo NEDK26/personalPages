@@ -20,6 +20,52 @@ function parseLivesLimit(value: string | undefined) {
   return Math.min(parsedValue, MAX_LIVES_LIMIT);
 }
 
+function createLivesPage(
+  allLives: Awaited<ReturnType<typeof getLivesContent>>,
+  cursor: string | undefined,
+  limit: number,
+) {
+  const cursorIndex = cursor ? allLives.findIndex((life) => life.id === cursor) : -1;
+
+  if (cursor && cursorIndex === -1) {
+    return null;
+  }
+
+  const startIndex = cursorIndex + 1;
+  const items = allLives.slice(startIndex, startIndex + limit);
+  const nextIndex = startIndex + items.length;
+
+  return {
+    items,
+    pageInfo: {
+      nextCursor:
+        nextIndex < allLives.length && items.length > 0 ? items[items.length - 1].id : null,
+      hasMore: nextIndex < allLives.length,
+    },
+  };
+}
+
+publicRouter.get("/content", async (c) => {
+  const [profile, now, allLives, highlights] = await Promise.all([
+    getProfileContent(),
+    getNowContent(),
+    getLivesContent(),
+    getHighlightsContent(),
+  ]);
+  const livesPage = createLivesPage(allLives, undefined, DEFAULT_LIVES_LIMIT);
+
+  return c.json({
+    profile,
+    now,
+    lives: livesPage?.items ?? [],
+    livesPageInfo: livesPage?.pageInfo ?? {
+      nextCursor: null,
+      hasMore: false,
+    },
+    highlights,
+  });
+});
+
 publicRouter.get("/profile", async (c) => {
   const profile = await getProfileContent();
 
@@ -36,9 +82,9 @@ publicRouter.get("/lives", async (c) => {
   const allLives = await getLivesContent();
   const cursor = c.req.query("cursor");
   const limit = parseLivesLimit(c.req.query("limit"));
-  const cursorIndex = cursor ? allLives.findIndex((life) => life.id === cursor) : -1;
+  const page = createLivesPage(allLives, cursor, limit);
 
-  if (cursor && cursorIndex === -1) {
+  if (!page) {
     return c.json(
       {
         error: "Invalid cursor",
@@ -47,18 +93,7 @@ publicRouter.get("/lives", async (c) => {
     );
   }
 
-  const startIndex = cursorIndex + 1;
-  const items = allLives.slice(startIndex, startIndex + limit);
-  const nextIndex = startIndex + items.length;
-  const nextCursor = nextIndex < allLives.length && items.length > 0 ? items[items.length - 1].id : null;
-
-  return c.json({
-    items,
-    pageInfo: {
-      nextCursor,
-      hasMore: nextIndex < allLives.length,
-    },
-  });
+  return c.json(page);
 });
 
 publicRouter.get("/highlights", async (c) => {

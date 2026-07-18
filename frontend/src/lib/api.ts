@@ -1,19 +1,14 @@
 import {
   isAdminContentResponse,
   isAdminLifeImageUploadResponse,
-  isHighlightsResponse,
   isLivesResponse,
-  isNow,
-  isProfile,
+  isPublicContent,
 } from "../types/public";
 import type {
   AdminContentResponse,
   AdminLifeImageUploadResponse,
-  HighlightsResponse,
   LivesPageInfo,
   LivesResponse,
-  Now,
-  Profile,
   PublicContent,
 } from "../types/public";
 
@@ -91,20 +86,7 @@ async function fetchJson<T>(
 }
 
 export async function fetchPublicContent(signal?: AbortSignal): Promise<PublicContent> {
-  const [profile, now, livesResponse, highlightsResponse] = await Promise.all([
-    fetchJson<Profile>("/profile", isProfile, signal),
-    fetchJson<Now>("/now", isNow, signal),
-    fetchJson<LivesResponse>(buildLivesPath(), isLivesResponse, signal),
-    fetchJson<HighlightsResponse>("/highlights", isHighlightsResponse, signal),
-  ]);
-
-  return {
-    profile,
-    now,
-    lives: livesResponse.items,
-    livesPageInfo: livesResponse.pageInfo,
-    highlights: highlightsResponse.items,
-  };
+  return fetchJson<PublicContent>("/content", isPublicContent, signal);
 }
 
 export async function fetchMoreLives(
@@ -284,10 +266,10 @@ export async function loginAdmin(username: string, password: string) {
 
 export async function logoutAdmin() {
   await fetchAdminJson<{ ok: boolean }>(
-    "/admin/logout",
+    "/admin/login",
     (value): value is { ok: boolean } =>
       typeof value === "object" && value !== null && (value as { ok?: unknown }).ok === true,
-    { method: "POST" },
+    { method: "DELETE" },
   );
   adminCsrfToken = null;
 }
@@ -316,62 +298,6 @@ export async function saveAdminContent(content: Omit<AdminContentResponse, "csrf
       }),
     },
   );
-}
-
-export async function saveAdminProfile(content: Profile) {
-  return fetchAdminJson<Profile>("/admin/profile", isProfile, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(content),
-  });
-}
-
-export async function saveAdminNow(content: Now) {
-  return fetchAdminJson<Now>("/admin/now", isNow, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(content),
-  });
-}
-
-export async function saveAdminLives(
-  items: LivesResponse["items"],
-) {
-  const response = await fetchAdminJson<LivesResponse>(
-    "/admin/lives",
-    isLivesResponse,
-    {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ items }),
-    },
-  );
-
-  return response.items;
-}
-
-export async function saveAdminHighlights(
-  items: HighlightsResponse["items"],
-) {
-  const response = await fetchAdminJson<HighlightsResponse>(
-    "/admin/highlights",
-    isHighlightsResponse,
-    {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ items }),
-    },
-  );
-
-  return response.items;
 }
 
 export async function uploadAdminLifeImage(
