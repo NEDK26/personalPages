@@ -1,69 +1,40 @@
-# Personal Pages
+<img src="/public/cover.jpg" alt="Cover image representing Nim, a personal website template" width="100%" />
 
-一个可编辑的个人主页：Hono + Turso 后端提供内容 API，Vite + React 前端负责展示和管理控制台，生产环境通过显式 Vercel Functions 保持同源 `/api` 请求。
+Nim is a free and open-source personal website template built with Next.js 15, React 19, Tailwind CSS v4, and Motion. Designed for developers, designers, and founders, it combines minimalism with delightful animated components powered by [Motion-Primitives](https://motion-primitives.com).
 
-## 项目结构
+Live demo: [https://nim-fawn.vercel.app](https://nim-fawn.vercel.app)
 
-- `backend/`：Hono API、管理员会话、内容迁移和 Turso 持久化。
-- `frontend/`：公开页面、按需加载的管理控制台、Vercel 显式代理和 Blob 图片直传。
+## Features
 
-## 本地启动
+- Minimal one-page portfolio layout.
+- Blog support with MDX.
+- Responsive and accessible design.
+- Easy to use
+- [Motion-Primitives](https://motion-primitives.com) for animated components.
+
+## Getting Started
+
+For detailed setup instructions, refer to the [Installation Guide](./INSTALLATION.md).
 
 ```bash
-cd backend
+git clone https://github.com/ibelick/nim.git
+cd nim
 npm install
-cp .env.example .env
 npm run dev
 ```
 
-另开一个终端：
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-```bash
-cd frontend
-npm install
-npm run dev
-```
+## Contributing
 
-前端默认位于 `http://localhost:5173`，后端默认位于 `http://localhost:3000`。访问 `#admin` 可打开管理控制台。
+Contributions are welcome! Feel free to open issues or submit pull requests to improve Nim.
 
-## 环境与安全
+## Deployment
 
-生产环境必须配置：
+You can deploy your site to any hosting platform that supports Next.js. For the easiest deployment experience, consider using Vercel:
 
-- `ADMIN_USERNAME`
-- `ADMIN_PASSWORD`，至少 12 个字符
-- `ADMIN_SESSION_SECRET`，至少 32 个随机字符
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fibelick%2Fnim&env=NEXT_PUBLIC_SITE_URL&project-name=nim&repository-name=nim&redirect-url=https%3A%2F%2Ftwitter.com%2Fibelick&demo-title=Nim&demo-description=Nim%20is%20a%20free%20and%20open-source%20minimal%20personal%20website%20template%20built%20with%20Next.js%2015%2C%20React%2019%2C%20and%20Motion-Primitives.&demo-url=https%3A%2F%2Fnim.vercel.app&demo-image=https%3A%2F%2Fraw.githubusercontent.com%2Fibelick%2Fnim%2Frefs%2Fheads%2Fmain%2F.github%2Fassets%2Freadme.png&teamSlug=ibelick)
 
-缺少任一变量时，生产后端会拒绝启动。登录成功后后端签发 8 小时有效的 `HttpOnly`、`SameSite=Strict` 会话 Cookie；浏览器不会持久化管理员密码，写操作额外校验 CSRF 令牌。
+## About
 
-数据库编辑需要 `TURSO_DATABASE_URL` 和 `TURSO_AUTH_TOKEN`，图片上传需要相应项目中的 `BLOB_READ_WRITE_TOKEN`。不要提交 `.env`。
-
-## 数据库迁移
-
-建表、兼容迁移和默认数据填充在后端启动阶段执行，不占用首个 HTTP 请求。也可以在部署阶段显式运行：
-
-```bash
-cd backend
-npm run migrate
-```
-
-内容列表替换使用 libSQL 写事务；任一写入失败时会整体回滚。
-
-## 验证命令
-
-```bash
-cd backend
-npm test
-npm run build
-
-cd ../frontend
-npm test
-npm run typecheck
-npm run build
-```
-
-## 生产请求链路
-
-浏览器只访问前端域名的 `/api/*`。`frontend/api/` 保留每个公开和管理端点的显式函数，公共代理行为集中在 `frontend/server/proxy.ts`。前端 Vercel 项目需要配置 `BACKEND_API_BASE_URL`；浏览器端 `VITE_API_BASE_URL` 保持 `/api`。
-
-Lives 图片通过前端函数签发短期直传权限后上传到 Vercel Blob，上传完成回调负责生成方形 WebP 缩略图。
+Nim is designed to make personal branding effortless and beautiful. If you enjoy it, consider sharing it and exploring [Motion-Primitives Pro](https://pro.motion-primitives.com/).
