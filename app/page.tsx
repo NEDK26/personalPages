@@ -2,12 +2,16 @@
 import { motion } from 'motion/react'
 import { Spotlight } from '@/components/ui/spotlight'
 import { Magnetic } from '@/components/ui/magnetic'
+import { AnimatedBackground } from '@/components/ui/animated-background'
+import Link from 'next/link'
+import Image from 'next/image'
 import {
-  PROJECTS,
-  WORK_EXPERIENCE,
+  CONTENT,
+  PROJECT_LINKS,
   EMAIL,
   SOCIAL_LINKS,
 } from './data'
+import { useLanguage } from './language'
 
 const VARIANTS_CONTAINER = {
   hidden: { opacity: 0 },
@@ -26,6 +30,11 @@ const VARIANTS_SECTION = {
 
 const TRANSITION_SECTION = {
   duration: 0.3,
+}
+
+const PROJECT_COVERS: Record<string, string> = {
+  action: '/projects/zhixing.jpg',
+  'free-agent': '/projects/freeagent.jpg',
 }
 
 function MagneticSocialLink({
@@ -63,6 +72,8 @@ function MagneticSocialLink({
 }
 
 export default function Personal() {
+  const { language } = useLanguage()
+  const content = CONTENT[language]
   return (
     <motion.main
       className="space-y-24"
@@ -76,7 +87,7 @@ export default function Personal() {
       >
         <div className="flex-1">
           <p className="text-zinc-600 dark:text-zinc-400">
-            关注 AI 应用与业务智能化落地，把工程实践和真实业务需求连接起来。
+            {content.intro}
           </p>
         </div>
       </motion.section>
@@ -85,16 +96,27 @@ export default function Personal() {
         variants={VARIANTS_SECTION}
         transition={TRANSITION_SECTION}
       >
-        <h3 className="mb-5 text-lg font-medium">精选项目</h3>
+        <h3 className="mb-5 text-lg font-medium">{content.projectsLabel}</h3>
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-          {PROJECTS.map((project) => (
-            <div key={project.name} className="space-y-2">
-              <div className="flex aspect-video items-center justify-center rounded-xl bg-zinc-100 text-4xl text-zinc-400 dark:bg-zinc-900" aria-hidden="true">{project.name.slice(0, 1)}</div>
+          {content.projects.map((project) => (
+            <div key={project.id} className="glass-project space-y-3">
+              <div className="project-cover relative flex aspect-video items-center justify-center overflow-hidden rounded-xl text-4xl" aria-hidden="true">
+                {PROJECT_COVERS[project.id] ? (
+                  <Image src={PROJECT_COVERS[project.id]} alt="" fill sizes="(max-width: 640px) calc(100vw - 52px), 280px" className="object-cover" />
+                ) : project.name.slice(0, 1)}
+              </div>
               <div className="px-1">
                 <span className="font-medium text-zinc-900 dark:text-zinc-50">{project.name}</span>
                 <p className="text-base text-zinc-600 dark:text-zinc-400">
                   {project.description}
                 </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {(['github', 'demo'] as const).map((kind) => {
+                    const href = PROJECT_LINKS[project.id]?.[kind]
+                    const label = kind === 'github' ? 'GitHub' : 'Demo'
+                    return href ? <a key={kind} href={href} target="_blank" rel="noopener noreferrer" className="rounded-full bg-zinc-100 px-3 py-1.5 text-xs text-zinc-800 transition-colors hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700">{label} ↗</a> : <span key={kind} aria-label={`${label}: ${content.linkUnavailable}`} className="rounded-full bg-zinc-50 px-3 py-1.5 text-xs text-zinc-400 dark:bg-zinc-900 dark:text-zinc-500">{label} · {content.linkUnavailable}</span>
+                  })}
+                </div>
               </div>
             </div>
           ))}
@@ -105,9 +127,9 @@ export default function Personal() {
         variants={VARIANTS_SECTION}
         transition={TRANSITION_SECTION}
       >
-        <h3 className="mb-5 text-lg font-medium">经历</h3>
+        <h3 className="mb-5 text-lg font-medium">{content.experienceLabel}</h3>
         <div className="flex flex-col space-y-2">
-          {WORK_EXPERIENCE.map((job) => (
+          {content.experience.map((job) => (
             <div
               className="relative overflow-hidden rounded-2xl bg-zinc-300/30 p-[1px] dark:bg-zinc-600/30"
               key={job.id}
@@ -136,13 +158,31 @@ export default function Personal() {
         </div>
       </motion.section>
 
+      <motion.section variants={VARIANTS_SECTION} transition={TRANSITION_SECTION}>
+        <h3 className="mb-3 text-lg font-medium">{content.blogLabel}</h3>
+        {content.blog.length > 0 ? (
+          <div className="flex flex-col">
+            <AnimatedBackground enableHover className="h-full w-full rounded-lg bg-zinc-100 dark:bg-zinc-900/80" transition={{ type: 'spring', bounce: 0, duration: 0.2 }}>
+              {content.blog.map((post) => (
+                <Link key={post.uid} data-id={post.uid} href={post.link} className="-mx-3 rounded-xl px-3 py-3">
+                  <div className="flex flex-col space-y-1">
+                    <h4 className="font-normal dark:text-zinc-100">{post.title}</h4>
+                    <p className="text-zinc-500 dark:text-zinc-400">{post.description}</p>
+                  </div>
+                </Link>
+              ))}
+            </AnimatedBackground>
+          </div>
+        ) : <p className="text-zinc-500 dark:text-zinc-400">{content.emptyBlog}</p>}
+      </motion.section>
+
       <motion.section
         variants={VARIANTS_SECTION}
         transition={TRANSITION_SECTION}
       >
-        <h3 className="mb-5 text-lg font-medium">联系我</h3>
+        <h3 className="mb-5 text-lg font-medium">{content.connect}</h3>
         <p className="mb-5 text-zinc-600 dark:text-zinc-400">
-          欢迎通过邮件联系我：{' '}
+          {content.contact}{' '}
           <a className="underline dark:text-zinc-300" href={`mailto:${EMAIL}`}>
             {EMAIL}
           </a>

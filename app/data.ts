@@ -1,11 +1,36 @@
-export const PROJECTS = [
-  { id: 'dify', name: '基于 Dify 的文档核实流程', description: '把模型能力、业务规则与流程系统结合成可落地的后端方案。' },
-  { id: 'research', name: '金融时间序列研究项目', description: '硕士阶段围绕金融时间序列分析与建模开展研究与实践。' },
-  { id: 'java', name: 'Java 后端工程实践', description: '持续积累接口设计、系统稳定性和业务落地方面的后端经验。' },
-]
-export const WORK_EXPERIENCE = [
-  { id: 'work', company: '杭州', title: 'Java 后端工程师', start: '2024', end: '至今' },
-  { id: 'education', company: '浙江工业大学', title: '软件工程硕士', start: '2021', end: '2024' },
-]
+export const CONTENT = {
+  en: {
+    name: 'Xu Minda', role: 'Robotics Engineer', intro: 'Building reliable software and exploring practical applications of AI.',
+    projectsLabel: 'Selected Projects', linkUnavailable: 'Not available yet', experienceLabel: 'Experience', blogLabel: 'Blog', emptyBlog: 'Articles coming soon.', connect: 'Connect', contact: 'Feel free to contact me at',
+    projects: [
+      { id: 'action', name: 'Ideas into Action', description: 'A project exploring approachable lifestyle ideas through real-world experiments, with starting budgets under ¥10,000.' },
+      { id: 'free-agent', name: 'FreeAgent', description: 'A Pi Agent plugin for managing a model pool and trying fallback models on retryable failures.' },
+    ],
+    experience: [
+      { id: 'work', company: 'Hangzhou', title: 'Java Backend Engineer', start: '2024', end: 'Present' },
+      { id: 'education', company: 'Zhejiang University of Technology', title: 'M.S. in Software Engineering', start: '2021', end: '2024' },
+    ],
+    blog: [{ uid: 'about-this-blog', title: 'About this blog', description: 'A place for notes on engineering, projects, and ideas.', link: '/blog/about-this-blog' }],
+  },
+  zh: {
+    name: '徐孟达', role: '机器人开发工程师', intro: '专注于可靠的软件系统，探索 AI 技术在实际业务中的应用。',
+    projectsLabel: '精选项目', linkUnavailable: '暂未提供', experienceLabel: '经历', blogLabel: '博客', emptyBlog: '文章准备中。', connect: '联系我', contact: '欢迎通过邮件联系我：',
+    projects: [
+      { id: 'action', name: '知行合一', description: '探索启动预算 1 万元以内、普通人可以尝试的生活理念，把衣橱、居住与健康等想法变成实际行动。' },
+      { id: 'free-agent', name: 'FreeAgent', description: '一个 Pi Agent 插件，用于管理模型池，并在可重试故障时尝试备用模型。' },
+    ],
+    experience: [
+      { id: 'work', company: '杭州', title: 'Java 后端工程师', start: '2024', end: '至今' },
+      { id: 'education', company: '浙江工业大学', title: '软件工程硕士', start: '2021', end: '2024' },
+    ],
+    blog: [{ uid: 'about-this-blog', title: '关于这个博客', description: '一个记录技术实践、项目和想法的地方。', link: '/blog/about-this-blog' }],
+  },
+} as const
 export const SOCIAL_LINKS = [{ label: 'GitHub', link: 'https://github.com/NEDK26' }]
-export const EMAIL = '1049696396@qq.com'
+export const EMAIL = 'sureminda@protonmail.com'
+
+// Add verified project links here; empty values remain unavailable.
+export const PROJECT_LINKS: Record<string, { github?: string; demo?: string }> = {
+  action: { github: 'https://github.com/NEDK26/zhixing-action' },
+  'free-agent': { github: 'https://github.com/NEDK26/freeAgent' },
+}

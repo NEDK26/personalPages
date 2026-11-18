@@ -2,27 +2,29 @@
 import { TextMorph } from '@/components/ui/text-morph'
 import { ScrollProgress } from '@/components/ui/scroll-progress'
 import { useEffect, useState } from 'react'
+import { useLanguage } from '../language'
 
 function CopyButton() {
-  const [text, setText] = useState('Copy')
+  const [copied, setCopied] = useState(false)
+  const { language } = useLanguage()
   const currentUrl = typeof window !== 'undefined' ? window.location.href : ''
 
   useEffect(() => {
     setTimeout(() => {
-      setText('Copy')
+      setCopied(false)
     }, 2000)
-  }, [text])
+  }, [copied])
 
   return (
     <button
       onClick={() => {
-        setText('Copied')
+        setCopied(true)
         navigator.clipboard.writeText(currentUrl)
       }}
       className="font-base flex items-center gap-1 text-center text-sm text-zinc-500 transition-colors dark:text-zinc-400"
       type="button"
     >
-      <TextMorph>{text}</TextMorph>
+      <TextMorph>{copied ? (language === 'zh' ? '已复制' : 'Copied') : (language === 'zh' ? '复制' : 'Copy')}</TextMorph>
       <span>URL</span>
     </button>
   )

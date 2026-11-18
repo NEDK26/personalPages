@@ -4,6 +4,7 @@ import './globals.css'
 import { Header } from './header'
 import { Footer } from './footer'
 import { ThemeProvider } from 'next-themes'
+import { LanguageProvider } from './language'
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -17,10 +18,10 @@ export const metadata: Metadata = {
     canonical: '/'
   },
   title: {
-    default: '徐孟达的个人主页',
-    template: '%s | 徐孟达'
+    default: 'Xu Minda | Personal Website',
+    template: '%s | Xu Minda'
   },
-  description:  'Java 后端工程师，关注 AI 应用与业务智能化落地。',
+  description:  'Robotics engineer exploring AI applications and practical software solutions.',
 };
 
 const geist = Geist({
@@ -39,9 +40,9 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="zh-CN" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geist.variable} ${geistMono.variable} bg-white tracking-tight antialiased dark:bg-zinc-950`}
+        className={`${geist.variable} ${geistMono.variable} site-background tracking-tight antialiased`}
       >
         <ThemeProvider
           enableSystem={true}
@@ -49,6 +50,7 @@ export default function RootLayout({
           storageKey="theme"
           defaultTheme="system"
         >
+          <LanguageProvider>
           <div className="flex min-h-screen w-full flex-col font-[family-name:var(--font-inter-tight)]">
             <div className="relative mx-auto w-full max-w-screen-sm flex-1 px-4 pt-20">
               <Header />
@@ -56,6 +58,7 @@ export default function RootLayout({
               <Footer />
             </div>
           </div>
+          </LanguageProvider>
         </ThemeProvider>
       </body>
     </html>
