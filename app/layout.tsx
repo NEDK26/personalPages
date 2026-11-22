@@ -37,7 +37,7 @@ const geistMono = Geist_Mono({
 // Latin nickname only. Not Pricedown: that face needs a paid webfont license.
 // Passion One is SIL OFL and may be embedded. See licenses/PassionOne-OFL.txt.
 const nickname = Passion_One({
-  weight: '900',
+  weight: '400',
   subsets: ['latin'],
   display: 'swap',
   adjustFontFallback: true,

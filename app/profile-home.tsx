@@ -204,7 +204,6 @@ export function ProfileHome() {
   const { language, setLanguage } = useLanguage()
   const content = CONTENT[language]
   const reduceMotion = useReducedMotion()
-  const initial = content.name.slice(0, 1)
   const [tab, setTab] = useState<ProfileTab>('experience')
   const focusTab = useRef<ProfileTab | null>(null)
 
@@ -241,11 +240,15 @@ export function ProfileHome() {
     >
       <div className="min-w-0">
         <div className="flex items-center gap-3">
-          <div
-            aria-hidden="true"
-            className="grid size-[92px] shrink-0 place-items-center rounded-full bg-[radial-gradient(circle_at_30%_24%,#4a4e5a_0%,#2a2c33_46%,#16171b_100%)] text-[34px] leading-none font-semibold text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)]"
-          >
-            {initial}
+          <div className="relative size-[92px] shrink-0 overflow-hidden rounded-full shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)]">
+            <Image
+              src="/avatar.jpg"
+              alt={content.name}
+              fill
+              sizes="92px"
+              className="origin-[46%_70%] scale-[2.2] object-cover"
+              priority
+            />
           </div>
           <p className="min-w-0 flex-1 rounded-2xl bg-[#1e1f22] px-3.5 py-3 text-[14px] leading-5 text-[#dbdee1]">
             {content.intro}
@@ -254,7 +257,7 @@ export function ProfileHome() {
 
         <h1
           lang="en"
-          className="mt-4 max-w-full truncate font-[family-name:var(--font-nickname),var(--font-geist),sans-serif] text-[34px] leading-none font-black tracking-tight text-white"
+          className="mt-4 max-w-full truncate font-[family-name:var(--font-nickname),var(--font-geist),sans-serif] text-[34px] leading-none font-normal tracking-tight text-white"
         >
           {DISPLAY_NAME}
         </h1>
