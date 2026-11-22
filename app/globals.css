@@ -70,3 +70,18 @@ html.dark .glass-switch, html.dark .glass-project { background: rgba(27, 34, 48,
 html.dark .project-cover { background: linear-gradient(135deg, rgba(72, 117, 160, .35), rgba(125, 93, 162, .3), rgba(68, 139, 133, .28)); color: #b8c8d8; }
 @keyframes aurora-drift { from { transform: translate3d(-1%, -1%, 0) scale(1); } to { transform: translate3d(2%, 2%, 0) scale(1.06); } }
 @media (prefers-reduced-motion: reduce) { body.site-background::before { animation: none; } .glass-project { transition: none; } }
+
+/* Homepage profile surface. Blog routes keep the existing theme. */
+body.site-background:has(.profile-canvas) { background: #111214; }
+body.site-background:has(.profile-canvas)::before { display: none; }
+.profile-canvas {
+  min-height: 100dvh;
+  background: #111214;
+  color: #f2f3f5;
+  color-scheme: dark;
+  overflow-x: clip;
+}
+@media (min-width: 1024px) {
+  .profile-canvas { display: flex; flex-direction: column; justify-content: center; }
+}
+.profile-canvas ::selection { background: rgba(88, 101, 242, .45); color: #fff; }
