@@ -4,7 +4,7 @@ import { motion, useReducedMotion } from 'motion/react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
-import { CONTENT, EMAIL, PROJECT_LINKS, SOCIAL_LINKS } from './data'
+import { CONTENT, DISPLAY_NAME, EMAIL, PROJECT_LINKS, SOCIAL_LINKS } from './data'
 import { useLanguage } from './language'
 
 const TABS = ['experience', 'projects', 'blog'] as const
@@ -252,9 +252,15 @@ export function ProfileHome() {
           </p>
         </div>
 
-        <h1 className="mt-4 text-[22px] leading-7 font-semibold tracking-tight text-white">
-          {content.name}
+        <h1
+          lang="en"
+          className="mt-4 max-w-full truncate font-[family-name:var(--font-nickname),var(--font-geist),sans-serif] text-[34px] leading-none font-black tracking-tight text-white"
+        >
+          {DISPLAY_NAME}
         </h1>
+        <p className="mt-1 text-[15px] leading-6 font-medium text-white">
+          {content.name}
+        </p>
 
         <div className="mt-1 flex items-center justify-between gap-3">
           <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">

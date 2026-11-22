@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
+import { Geist, Geist_Mono, Passion_One } from 'next/font/google'
 import './globals.css'
 import { ThemeProvider } from 'next-themes'
 import { LanguageProvider } from './language'
@@ -34,6 +34,17 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
 })
 
+// Latin nickname only. Not Pricedown: that face needs a paid webfont license.
+// Passion One is SIL OFL and may be embedded. See licenses/PassionOne-OFL.txt.
+const nickname = Passion_One({
+  weight: '900',
+  subsets: ['latin'],
+  display: 'swap',
+  adjustFontFallback: true,
+  fallback: ['Arial Narrow', 'Arial', 'sans-serif'],
+  variable: '--font-nickname',
+})
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -42,7 +53,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geist.variable} ${geistMono.variable} site-background tracking-tight antialiased`}
+        className={`${geist.variable} ${geistMono.variable} ${nickname.variable} site-background tracking-tight antialiased`}
       >
         <ThemeProvider
           enableSystem={true}

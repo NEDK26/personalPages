@@ -30,6 +30,7 @@ export const CONTENT = {
 } as const
 export const SOCIAL_LINKS = [{ label: 'GitHub', link: 'https://github.com/NEDK26' }]
 export const EMAIL = 'sureminda@protonmail.com'
+export const DISPLAY_NAME = 'MindaDX'
 
 // Add verified project links here; empty values remain unavailable.
 export const PROJECT_LINKS: Record<string, { github?: string; demo?: string }> = {
