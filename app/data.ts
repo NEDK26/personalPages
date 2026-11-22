@@ -2,6 +2,7 @@ export const CONTENT = {
   en: {
     name: 'Xu Minda', role: 'Robotics Engineer', intro: 'Building reliable software and exploring practical applications of AI.',
     projectsLabel: 'Selected Projects', linkUnavailable: 'Not available yet', experienceLabel: 'Experience', blogLabel: 'Blog', emptyBlog: 'Articles coming soon.', connect: 'Connect', contact: 'Feel free to contact me at',
+    tabs: { experience: 'Experience', projects: 'Projects', blog: 'Blog' }, tabListLabel: 'Profile',
     projects: [
       { id: 'action', name: 'Ideas into Action', description: 'A project exploring approachable lifestyle ideas through real-world experiments, with starting budgets under ¥10,000.' },
       { id: 'free-agent', name: 'FreeAgent', description: 'A Pi Agent plugin for managing a model pool and trying fallback models on retryable failures.' },
@@ -15,6 +16,7 @@ export const CONTENT = {
   zh: {
     name: '徐孟达', role: '机器人开发工程师', intro: '专注于可靠的软件系统，探索 AI 技术在实际业务中的应用。',
     projectsLabel: '精选项目', linkUnavailable: '暂未提供', experienceLabel: '经历', blogLabel: '博客', emptyBlog: '文章准备中。', connect: '联系我', contact: '欢迎通过邮件联系我：',
+    tabs: { experience: '经历', projects: '项目', blog: '博客' }, tabListLabel: '资料',
     projects: [
       { id: 'action', name: '知行合一', description: '探索启动预算 1 万元以内、普通人可以尝试的生活理念，把衣橱、居住与健康等想法变成实际行动。' },
       { id: 'free-agent', name: 'FreeAgent', description: '一个 Pi Agent 插件，用于管理模型池，并在可重试故障时尝试备用模型。' },
