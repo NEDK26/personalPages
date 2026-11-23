@@ -6,6 +6,7 @@ export const CONTENT = {
     projects: [
       { id: 'action', name: 'Ideas into Action', description: 'A project exploring approachable lifestyle ideas through real-world experiments, with starting budgets under ¥10,000.' },
       { id: 'free-agent', name: 'FreeAgent', description: 'A Pi Agent plugin for managing a model pool and trying fallback models on retryable failures.' },
+      { id: 'keyboard-simulator', name: '3D Keyboard Simulator', description: 'Customize a keyboard in 3D by choosing a layout, editing keycap colors, and testing the result as you type.' },
     ],
     experience: [
       { id: 'work', company: 'Hangzhou', title: 'Java Backend Engineer', start: '2024', end: 'Present' },
@@ -20,6 +21,7 @@ export const CONTENT = {
     projects: [
       { id: 'action', name: '知行合一', description: '探索启动预算 1 万元以内、普通人可以尝试的生活理念，把衣橱、居住与健康等想法变成实际行动。' },
       { id: 'free-agent', name: 'FreeAgent', description: '一个 Pi Agent 插件，用于管理模型池，并在可重试故障时尝试备用模型。' },
+      { id: 'keyboard-simulator', name: '3D 键盘模拟器', description: '在浏览器里选布局、给键帽配色，实时预览 3D 键盘，并直接试打。' },
     ],
     experience: [
       { id: 'work', company: '杭州', title: 'Java 后端工程师', start: '2024', end: '至今' },
@@ -36,4 +38,8 @@ export const DISPLAY_NAME = 'MindaDX'
 export const PROJECT_LINKS: Record<string, { github?: string; demo?: string }> = {
   action: { github: 'https://github.com/NEDK26/zhixing-action' },
   'free-agent': { github: 'https://github.com/NEDK26/freeAgent' },
+  'keyboard-simulator': {
+    github: 'https://github.com/crsnbrt/keysim',
+    demo: 'https://keyboardsimulator.xyz/',
+  },
 }

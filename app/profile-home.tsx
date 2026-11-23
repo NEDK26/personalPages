@@ -13,6 +13,7 @@ type ProfileTab = (typeof TABS)[number]
 const PROJECT_COVERS: Record<string, string> = {
   action: '/projects/zhixing.jpg',
   'free-agent': '/projects/freeagent.jpg',
+  'keyboard-simulator': '/projects/keyboard-simulator.jpg',
 }
 
 const focusRing =
