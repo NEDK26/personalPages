@@ -1,20 +1,15 @@
 'use client'
 
 import { motion, useReducedMotion } from 'motion/react'
+import { ArrowRight, Layers3 } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
-import { CONTENT, DISPLAY_NAME, EMAIL, PROJECT_LINKS, SOCIAL_LINKS } from './data'
+import { CONTENT, DISPLAY_NAME, EMAIL, SOCIAL_LINKS } from './data'
 import { useLanguage } from './language'
 
 const TABS = ['experience', 'projects', 'blog'] as const
 type ProfileTab = (typeof TABS)[number]
-
-const PROJECT_COVERS: Record<string, string> = {
-  action: '/projects/zhixing.jpg',
-  'free-agent': '/projects/freeagent.jpg',
-  'keyboard-simulator': '/projects/keyboard-simulator.jpg',
-}
 
 const focusRing =
   'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c9cdfb]'
@@ -25,15 +20,6 @@ function publicHandle(url: string) {
   } catch {
     return url
   }
-}
-
-function projectDestinations(id: string) {
-  const links = PROJECT_LINKS[id]
-  if (!links) return []
-  return [
-    links.github ? { href: links.github, label: 'GitHub' } : null,
-    links.demo ? { href: links.demo, label: 'Demo' } : null,
-  ].filter((item): item is { href: string; label: string } => item !== null)
 }
 
 function ExperiencePanel({
@@ -82,91 +68,6 @@ function ExperiencePanel({
   )
 }
 
-function ProjectsPanel({
-  projects,
-}: {
-  projects: readonly { id: string; name: string; description: string }[]
-}) {
-  return (
-    <div className="space-y-2">
-      {projects.map((project) => {
-        const destinations = projectDestinations(project.id)
-        const cover = PROJECT_COVERS[project.id]
-        const body = (
-          <>
-            <div className="relative size-14 shrink-0 overflow-hidden rounded-xl bg-[#2b2d31]">
-              {cover ? (
-                <Image
-                  src={cover}
-                  alt=""
-                  fill
-                  sizes="56px"
-                  className="object-cover"
-                />
-              ) : null}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-baseline justify-between gap-3">
-                <h2 className="truncate text-[15px] font-medium text-white">
-                  {project.name}
-                </h2>
-                {destinations.length === 1 ? (
-                  <span className="shrink-0 text-xs text-[#949ba4]">
-                    {destinations[0].label}
-                  </span>
-                ) : null}
-              </div>
-              <p className="mt-1 text-[13px] leading-5 text-pretty text-[#b5bac1]">
-                {project.description}
-              </p>
-              {destinations.length > 1 ? (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {destinations.map((destination) => (
-                    <a
-                      key={destination.label}
-                      href={destination.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={`rounded-md bg-white/5 px-2 py-1 text-xs text-[#dbdee1] hover:bg-white/10 ${focusRing}`}
-                    >
-                      {destination.label}
-                    </a>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-          </>
-        )
-        const cardClass = `flex items-start gap-3 rounded-2xl bg-[#1e1f22] p-3 transition-colors ${
-          destinations.length === 1
-            ? `hover:bg-[#232428] active:bg-[#2a2c33] ${focusRing}`
-            : ''
-        }`
-
-        if (destinations.length === 1) {
-          return (
-            <a
-              key={project.id}
-              href={destinations[0].href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={cardClass}
-            >
-              {body}
-            </a>
-          )
-        }
-
-        return (
-          <div key={project.id} className={cardClass}>
-            {body}
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
 function BlogPanel({
   posts,
   empty,
@@ -207,6 +108,10 @@ export function ProfileHome() {
   const reduceMotion = useReducedMotion()
   const [tab, setTab] = useState<ProfileTab>('experience')
   const focusTab = useRef<ProfileTab | null>(null)
+
+  useEffect(() => {
+    if (window.location.hash === '#projects') setTab('projects')
+  }, [])
 
   useEffect(() => {
     if (!focusTab.current) return
@@ -373,7 +278,18 @@ export function ProfileHome() {
             />
           ) : null}
           {tab === 'projects' ? (
-            <ProjectsPanel projects={content.projects} />
+            <Link
+              href="/projects"
+              className={`flex items-center gap-3 rounded-2xl bg-[#1e1f22] p-3 transition-colors hover:bg-[#232428] active:bg-[#2a2c33] ${focusRing}`}
+            >
+              <span className="grid size-14 shrink-0 place-items-center rounded-xl bg-[#2b2d31] text-[#c9cdfb]">
+                <Layers3 size={24} aria-hidden="true" />
+              </span>
+              <h2 className="min-w-0 flex-1 text-[15px] font-medium text-white">
+                {content.projectCollection.title}
+              </h2>
+              <ArrowRight size={16} className="shrink-0 text-[#949ba4]" aria-hidden="true" />
+            </Link>
           ) : null}
           {tab === 'blog' ? (
             <BlogPanel posts={content.blog} empty={content.emptyBlog} />

@@ -1,81 +1,31 @@
-# Nim - Installation Guide
+# 个人主页维护指南
 
-## Prerequisites
+## 安装与预览
 
-- Node.js 20.x or later
-- Git
+本地需要 Git、Node.js 20 或更高版本，以及 npm。进入仓库根目录后安装锁定的依赖并启动开发服务。
 
-## Installation Steps
-
-1. **Clone the repository**
-
-   ```bash
-   git clone https://github.com/ibelick/nim.git
-   cd nim
-   ```
-
-2. **Install dependencies**
-
-   ```bash
-   npm install
-   ```
-
-3. **Run the development server**
-
-   ```bash
-   npm run dev
-   ```
-
-4. **Update the template data**
-
-   Update the template data in the `app/data.ts` file.
-
-   ```ts
-   export const EMAIL = 'your@email.com'
-
-   export const SOCIAL_LINKS = [
-     {
-       label: 'Github',
-       link: 'your-github-url',
-     },
-     // Add your social links
-   ]
-
-   ...
-   ```
-
-5. **Add your blog posts**
-
-Create a new .mdx file for each blog post inside the app/blog folder. For example:
-app/blog/your-article-slug/page.mdx.
-
-Example blog post structure in .mdx:
-
-```mdx
-# Your Article Title
-
-Introduction
-
-Your content here...
-
-## Code Examples
-
-// Example code block here...
+```bash
+npm ci
+npm run dev
 ```
 
-**Note:** You can use all MDX features, including React components, in your blog posts.
+打开 [本地主页](http://localhost:3000/)，用资料页顶部的语言切换检查中英文内容。
 
-6. **Project Structure**
+## 更新资料与项目
 
-For a better understanding of the Next.js project structure, refer to the [Next.js](https://nextjs.org/docs/app/getting-started/project-structure) documentation.
+- 昵称、姓名、简介、工作与教育经历、联系方式集中在 [`app/data.ts`](./app/data.ts)。姓名、简介和经历有 `en` 与 `zh` 两份内容，更新时同步修改。头像文件在 [`public/avatar.jpg`](./public/avatar.jpg)。
+- 新增项目集条目时，在 `CONTENT.en.projects` 和 `CONTENT.zh.projects` 各加一条记录，两条使用相同的 `id`。在 `PROJECT_LINKS` 下用同一个 `id` 登记 GitHub 和线上 Demo 地址。缺少地址的入口会显示为暂未提供。
+- 将项目缩略图放在 [`public/projects/`](./public/projects/)，在 [项目集页面](./app/projects/page.tsx) 的 `PROJECT_COVERS` 中登记路径，例如 `/projects/my-project.jpg`。列表将图片按正方形裁切，主体放在画面中央即可。
+- 3D 键盘模拟器目前链接到 KeySim 的源码和在线 Demo。二开版发布后，在 `PROJECT_LINKS['keyboard-simulator']` 更新这两个地址。
 
-7. **Additional Features**
+## 发布博客
 
-Want to add more animated components?
-Check out [Motion-Primitives](https://motion-primitives.com/) for additional animation components and templates. If you want something else DM on [X](https://x.com/Ibelick).
+1. 在 `app/blog/<slug>/page.mdx` 编写正文，并导出 `metadata`，可参考 [首篇博客](./app/blog/about-this-blog/page.mdx)。如需按语言切换正文，可参考同目录的 [`content.tsx`](./app/blog/about-this-blog/content.tsx)。
+2. 在 `CONTENT.en.blog` 和 `CONTENT.zh.blog` 中登记文章的标题、摘要及链接，两者使用相同的 `uid` 和 `/blog/<slug>` 路径。
+3. 在首页的「博客」标签中检查两个语言版本的入口和正文。
 
-8.  **Deployment**
+## 部署
 
-You can deploy your site to any hosting platform that supports Next.js. For the easiest deployment experience, consider using Vercel:
+Vercel 的 `my-pages` 项目连接 `NEDK26/personalPages`，生产分支为 `main`，构建根目录为仓库根目录。合并后，Vercel 会为新提交自动部署。通过 GitHub 提交页的 `Vercel – my-pages` 检查确认部署状态，然后打开 [生产主页](https://my-pages-eight.vercel.app/) 验证本次更新。
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fibelick%2Fnim&env=NEXT_PUBLIC_SITE_URL&project-name=nim&repository-name=nim&redirect-url=https%3A%2F%2Ftwitter.com%2Fibelick&demo-title=Nim&demo-description=Nim%20is%20a%20free%20and%20open-source%20minimal%20personal%20website%20template%20built%20with%20Next.js%2015%2C%20React%2019%2C%20and%20Motion-Primitives.&demo-url=https%3A%2F%2Fnim.vercel.app&demo-image=https%3A%2F%2Fraw.githubusercontent.com%2Fibelick%2Fnim%2Frefs%2Fheads%2Fmain%2F.github%2Fassets%2Freadme.png&teamSlug=ibelick)
+本地需要验证生产构建时，运行 `npm run build`。如果更换正式域名，同步更新 [`app/layout.tsx`](./app/layout.tsx) 的 `metadataBase` 和 [`lib/constants.ts`](./lib/constants.ts) 的 `WEBSITE_URL`。

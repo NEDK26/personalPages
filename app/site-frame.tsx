@@ -7,7 +7,7 @@ import { Header } from './header'
 export function SiteFrame({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
 
-  if (pathname === '/') {
+  if (pathname === '/' || pathname === '/projects') {
     return <div className="profile-canvas">{children}</div>
   }
 
