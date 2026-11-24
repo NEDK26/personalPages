@@ -1,6 +1,6 @@
 export const CONTENT = {
   en: {
-    name: 'Xu Minda', role: 'Robotics Engineer', intro: 'I work on robotics and have a background in Java backend development. In my spare time, I build tools I want to use, like a Pi plugin for model fallback and a 3D keyboard customizer.',
+    name: 'Xu Minda', role: 'Robotics Engineer', intro: 'Autonomous driving by day. Building things with AI and curiosity.',
     projectsLabel: 'Selected Projects', linkUnavailable: 'Not available yet', experienceLabel: 'Experience', blogLabel: 'Blog', emptyBlog: 'Articles coming soon.', connect: 'Connect', contact: 'Feel free to contact me at',
     tabs: { experience: 'Experience', projects: 'Projects', blog: 'Blog' }, tabListLabel: 'Profile',
     projectCollection: {
@@ -22,7 +22,7 @@ export const CONTENT = {
     ],
   },
   zh: {
-    name: '徐孟达', role: '机器人开发工程师', intro: '我做机器人开发，也有 Java 后端开发背景。业余做一些自己想用的工具，比如给 Pi 写模型回退插件，在浏览器里搭配自己的 3D 键盘。',
+    name: '徐孟达', role: '机器人开发工程师', intro: '白天做自动驾驶，其他时间带着好奇心用 AI 做点东西。',
     projectsLabel: '精选项目', linkUnavailable: '暂未提供', experienceLabel: '经历', blogLabel: '博客', emptyBlog: '文章准备中。', connect: '联系我', contact: '欢迎通过邮件联系我：',
     tabs: { experience: '经历', projects: '项目', blog: '博客' }, tabListLabel: '资料',
     projectCollection: {
