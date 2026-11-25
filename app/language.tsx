@@ -3,10 +3,10 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 
 type Language = 'en' | 'zh'
-const LanguageContext = createContext<{ language: Language; setLanguage: (language: Language) => void }>({ language: 'en', setLanguage: () => {} })
+const LanguageContext = createContext<{ language: Language; setLanguage: (language: Language) => void }>({ language: 'zh', setLanguage: () => {} })
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [language, setLanguage] = useState<Language>('en')
+  const [language, setLanguage] = useState<Language>('zh')
   useEffect(() => {
     const saved = localStorage.getItem('site-language')
     if (saved === 'zh' || saved === 'en') setLanguage(saved)
